@@ -650,7 +650,7 @@ run-only:
          -nographic \
          -bios flash.bin \
 		 -kernel Image  \
-         -drive format=raw,if=none,file=$(BINARIES_PATH)/rootfs.ext4,id=hd0 \
+         -drive format=raw,if=none,file=$(ROOT)/out-br/images/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
          -nodefaults \
@@ -680,7 +680,7 @@ run-only-multiregion:
          -nographic \
          -bios flash.bin \
 		 -kernel Image  \
-         -drive format=raw,if=none,file=$(BINARIES_PATH)/rootfs.ext4,id=hd0 \
+         -drive format=raw,if=none,file=$(ROOT)/out-br/images/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
          -nodefaults \
