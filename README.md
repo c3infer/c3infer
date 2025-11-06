@@ -1,6 +1,8 @@
 # cca_patches
 Patches for our project
 
+Requirements: ts
+
 ```bash
 mkdir c3infer
 cd c3infer
