@@ -649,8 +649,8 @@ run-only:
          -m 3G -smp 4 \
          -nographic \
          -bios flash.bin \
-         -kernel Image \
-         -drive format=raw,if=none,file=$(ROOT)/out-br/images/rootfs.ext4,id=hd0 \
+		 -kernel $(HOST_KERNEL_PATH)  \
+         -drive format=raw,if=none,file=$(BROOT_IMG_PATH)/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
          -nodefaults \
@@ -662,11 +662,48 @@ run-only:
          -chardev socket,mux=on,id=hvc1,port=54323,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc1 \
+		 -chardev socket,mux=on,id=hvc2,port=54324,host=localhost \
+         -device virtio-serial-device \
+         -device virtconsole,chardev=hvc2 \
          -append "root=/dev/vda earlycon console=hvc0 nokaslr" \
          -device virtio-net-pci,netdev=net0 \
          -netdev user,id=net0 \
          -device virtio-9p-device,fsdev=shr0,mount_tag=shr0 \
          -fsdev local,security_model=none,path=../../,id=shr0
+
+run-only-multiregion:
+	ln -rsf $(ROOT)/out-br/images/rootfs.cpio.gz $(BINARIES_PATH)/
+	cd $(BINARIES_PATH) && $(QEMU_BUILD)/qemu-system-aarch64 \
+         -M virt,virtualization=on,secure=on,gic-version=3 \
+         -M acpi=off -cpu max,x-rme=on,sme=off,pauth-impdef=on \
+         -m 3G -smp 4 \
+         -nographic \
+         -bios flash.bin \
+		 -kernel $(HOST_KERNEL_PATH)  \
+         -drive format=raw,if=none,file=$(BROOT_IMG_PATH)/rootfs.ext4,id=hd0 \
+         -device virtio-blk-pci,drive=hd0 \
+         -append root=/dev/vda \
+         -nodefaults \
+         -serial tcp:localhost:54320 \
+         -serial tcp:localhost:54321 \
+         -chardev socket,mux=on,id=hvc0,port=54322,host=localhost \
+         -device virtio-serial-device \
+         -device virtconsole,chardev=hvc0 \
+         -chardev socket,mux=on,id=hvc1,port=54323,host=localhost \
+         -device virtio-serial-device \
+         -device virtconsole,chardev=hvc1 \
+		 -chardev socket,mux=on,id=hvc2,port=54324,host=localhost \
+         -device virtio-serial-device \
+         -device virtconsole,chardev=hvc2 \
+		 -chardev socket,mux=on,id=hvc3,port=54325,host=localhost \
+         -device virtio-serial-device \
+         -device virtconsole,chardev=hvc3 \
+         -append "root=/dev/vda earlycon console=hvc0 nokaslr" \
+         -device virtio-net-pci,netdev=net0 \
+         -netdev user,id=net0 \
+         -device virtio-9p-device,fsdev=shr0,mount_tag=shr0 \
+         -fsdev local,security_model=none,path=../../,id=shr0
+
 
 ifneq ($(filter check check-rust,$(MAKECMDGOALS)),)
 CHECK_DEPS := all
