@@ -405,7 +405,7 @@ LINUX_GUEST_DEFCONFIG_COMMON_FILES := \
 	$(CURDIR)/kconfigs/cca.conf
 
 linux-guest:
-	$(MAKE) -f common.mk linux-common \
+	$(MAKE) linux-common \
 		LINUX_PATH=$(LINUX_GUEST_PATH) \
 		LINUX_DEFCONFIG_COMMON_FILES="$(LINUX_GUEST_DEFCONFIG_COMMON_FILES)"
 
@@ -427,7 +427,7 @@ LINUX_CLEANER_COMMON_FLAGS += ARCH=arm64
 linux-cleaner: linux-cleaner-common
 
 linux-guest-clean:
-	$(MAKE) -f common.mk linux-clean-common \
+	$(MAKE) linux-clean-common \
 		LINUX_PATH=$(LINUX_GUEST_PATH) \
 		LINUX_DEFCONFIG_COMMON_FILES="$(LINUX_GUEST_DEFCONFIG_COMMON_FILES)"
 
