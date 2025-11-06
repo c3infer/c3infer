@@ -649,8 +649,8 @@ run-only:
          -m 3G -smp 4 \
          -nographic \
          -bios flash.bin \
-		 -kernel $(HOST_KERNEL_PATH)  \
-         -drive format=raw,if=none,file=$(BROOT_IMG_PATH)/rootfs.ext4,id=hd0 \
+		 -kernel Image  \
+         -drive format=raw,if=none,file=$(BINARIES_PATH)/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
          -nodefaults \
@@ -679,8 +679,8 @@ run-only-multiregion:
          -m 3G -smp 4 \
          -nographic \
          -bios flash.bin \
-		 -kernel $(HOST_KERNEL_PATH)  \
-         -drive format=raw,if=none,file=$(BROOT_IMG_PATH)/rootfs.ext4,id=hd0 \
+		 -kernel Image  \
+         -drive format=raw,if=none,file=$(BINARIES_PATH)/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
          -nodefaults \
