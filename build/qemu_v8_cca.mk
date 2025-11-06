@@ -70,8 +70,7 @@ else
 EDK2_BUILD		?= RELEASE
 endif
 EDK2_BIN		?= $(EDK2_PATH)/Build/ArmVirtQemuKernel-$(EDK2_ARCH)/$(EDK2_BUILD)_$(EDK2_TOOLCHAIN)/FV/QEMU_EFI.fd
-# RMM_PATH		?= $(ROOT)/../rmm
-RMM_PATH		?= $(ROOT)/../staged/rmm-private
+RMM_PATH		?= $(ROOT)/rmm
 ifeq ($(DEBUG),1)
 RMM_BUILD		?= Debug
 RMM_LOG_LEVEL		?= 50
@@ -129,9 +128,9 @@ endif
 ################################################################################
 # Targets
 ################################################################################
-TARGET_DEPS := arm-tf buildroot linux optee-os qemu
+TARGET_DEPS := arm-tf buildroot linux optee-os qemu linux-guest
 TARGET_CLEAN := arm-tf-clean buildroot-clean linux-clean optee-os-clean \
-	qemu-clean check-clean
+	qemu-clean check-clean linux-guest-clean
 
 TARGET_DEPS 		+= $(BL33_DEPS)
 
@@ -398,6 +397,21 @@ linux: linux-common
 	mkdir -p $(BINARIES_PATH)
 	ln -rsf $(LINUX_PATH)/arch/arm64/boot/Image $(BINARIES_PATH)
 
+# second kernel build, reusing common.mk logic
+LINUX_GUEST_PATH ?= $(ROOT)/linux-guest
+LINUX_GUEST_DEFCONFIG_COMMON_FILES := \
+	$(LINUX_GUEST_PATH)/arch/arm64/configs/rsi_support_defconfig \
+	$(CURDIR)/kconfigs/qemu.conf \
+	$(CURDIR)/kconfigs/cca.conf
+
+linux-guest:
+	$(MAKE) -f common.mk linux-common \
+		LINUX_PATH=$(LINUX_GUEST_PATH) \
+		LINUX_DEFCONFIG_COMMON_FILES="$(LINUX_GUEST_DEFCONFIG_COMMON_FILES)"
+
+	mkdir -p $(BINARIES_PATH)
+	ln -rsf $(LINUX_GUEST_PATH)/arch/arm64/boot/Image $(BINARIES_PATH)/Image-guest
+
 linux-modules: linux
 	$(MAKE) -C $(LINUX_PATH) $(LINUX_COMMON_FLAGS) modules
 	$(MAKE) -C $(LINUX_PATH) $(LINUX_COMMON_FLAGS) INSTALL_MOD_STRIP=1 INSTALL_MOD_PATH=$(MODULE_OUTPUT) modules_install
@@ -411,6 +425,11 @@ linux-clean: linux-clean-common
 LINUX_CLEANER_COMMON_FLAGS += ARCH=arm64
 
 linux-cleaner: linux-cleaner-common
+
+linux-guest-clean:
+	$(MAKE) -f common.mk linux-clean-common \
+		LINUX_PATH=$(LINUX_GUEST_PATH) \
+		LINUX_DEFCONFIG_COMMON_FILES="$(LINUX_GUEST_DEFCONFIG_COMMON_FILES)"
 
 ################################################################################
 # OP-TEE
@@ -621,44 +640,25 @@ QEMU_RUN_ARGS = $(QEMU_BASE_ARGS) $(QEMU_SCMI_ARGS)
 QEMU_RUN_ARGS += $(QEMU_RUN_ARGS_COMMON)
 QEMU_RUN_ARGS += -s -S -serial tcp:127.0.0.1:$(QEMU_NW_PORT) -serial tcp:127.0.0.1:$(QEMU_SW_PORT) 
 
-
-# 	$(call check-terminal)
-# 	$(call run-help)
-# 	$(call launch-terminal,54321,"Secure")
-# 	$(call launch-terminal,54320,"Firmware")
-# 	$(call wait-for-ports,54320,54321)
-# 	$(call launch-terminal,54322,"host")
-# 	$(call launch-terminal,54323,"Realm")
-# 	$(call wait-for-ports,54322,54323)
-# ln -rsf $(ROOT)/out-br/images/rootfs.cpio.gz $(BINARIES_PATH)/
-# -drive format=raw,if=none,file=$(ROOT)/out-br/images/rootfs.ext4,id=hd0 \
-
-# -drive format=raw,if=none,file=$(BUILDROOT_PATH)/output/images/rootfs.ext4,id=hd0 \
-# -drive format=raw,if=none,file=$(ROOT)/../ubuntu_fs/ubuntu22.img,id=hd0 \
-
-# 	ln -rsf $(ROOT)/out-br/images/rootfs.cpio.gz $(BINARIES_PATH)/
-#          -kernel Image \
-# -kernel $(ROOT)/../staged/guest_kernel/arch/arm64/boot/Image \
-
-BROOT_IMG_PATH=$(ROOT)/../staged/buildroot/output/images/
-HOST_KERNEL_PATH=$(ROOT)/../staged/host_kernel/arch/arm64/boot/Image
-GUEST_KERNEL_PATH=$(ROOT)/../staged/guest_kernel/arch/arm64/boot/Image
-UBUNTU_IMG=$(ROOT)/../ubuntu_fs/ubuntu22.img
-
 .PHONY: run-only
 run-only:
-	mkdir -p $(ROOT)/guest
-	cp $(GUEST_KERNEL_PATH) $(ROOT)/guest/
-	cp $(BROOT_IMG_PATH)/rootfs.cpio $(ROOT)/guest/
-	ln -rsf $(BROOT_IMG_PATH)/rootfs.cpio.gz $(BINARIES_PATH)/
+	ln -rsf $(ROOT)/out-br/images/rootfs.cpio.gz $(BINARIES_PATH)/
+	$(call check-terminal)
+	$(call run-help)
+	$(call launch-terminal,54321,"Secure")
+	$(call launch-terminal,54320,"Firmware")
+	$(call wait-for-ports,54320,54321)
+	$(call launch-terminal,54322,"host")
+	$(call launch-terminal,54323,"Realm")
+	$(call wait-for-ports,54322,54323)
 	cd $(BINARIES_PATH) && $(QEMU_BUILD)/qemu-system-aarch64 \
          -M virt,virtualization=on,secure=on,gic-version=3 \
          -M acpi=off -cpu max,x-rme=on,sme=off,pauth-impdef=on \
          -m 3G -smp 4 \
          -nographic \
          -bios flash.bin \
-		 -kernel $(HOST_KERNEL_PATH)  \
-         -drive format=raw,if=none,file=$(BROOT_IMG_PATH)/rootfs.ext4,id=hd0 \
+         -kernel Image \
+         -drive format=raw,if=none,file=$(ROOT)/out-br/images/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
          -nodefaults \
@@ -670,56 +670,11 @@ run-only:
          -chardev socket,mux=on,id=hvc1,port=54323,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc1 \
-		 -chardev socket,mux=on,id=hvc2,port=54324,host=localhost \
-         -device virtio-serial-device \
-         -device virtconsole,chardev=hvc2 \
          -append "root=/dev/vda earlycon console=hvc0 nokaslr" \
          -device virtio-net-pci,netdev=net0 \
          -netdev user,id=net0 \
          -device virtio-9p-device,fsdev=shr0,mount_tag=shr0 \
          -fsdev local,security_model=none,path=../../,id=shr0
-
-run-only-multiregion:
-	mkdir -p $(ROOT)/guest
-	cp $(GUEST_KERNEL_PATH) $(ROOT)/guest/
-	cp $(BROOT_IMG_PATH)/rootfs.cpio $(ROOT)/guest/
-	cp $(BROOT_IMG_PATH)/rootfs.cpio.gz $(ROOT)/guest/
-# 	cp $(UBUNTU_IMG) $(ROOT)/guest/ 
-	ln -rsf $(BROOT_IMG_PATH)/rootfs.cpio.gz $(BINARIES_PATH)/
-	cd $(BINARIES_PATH) && $(QEMU_BUILD)/qemu-system-aarch64 \
-         -M virt,virtualization=on,secure=on,gic-version=3 \
-         -M acpi=off -cpu max,x-rme=on,sme=off,pauth-impdef=on \
-         -m 3G -smp 4 \
-         -nographic \
-         -bios flash.bin \
-		 -kernel $(HOST_KERNEL_PATH)  \
-         -drive format=raw,if=none,file=$(BROOT_IMG_PATH)/rootfs.ext4,id=hd0 \
-         -device virtio-blk-pci,drive=hd0 \
-         -append root=/dev/vda \
-         -nodefaults \
-         -serial tcp:localhost:54320 \
-         -serial tcp:localhost:54321 \
-         -chardev socket,mux=on,id=hvc0,port=54322,host=localhost \
-         -device virtio-serial-device \
-         -device virtconsole,chardev=hvc0 \
-         -chardev socket,mux=on,id=hvc1,port=54323,host=localhost \
-         -device virtio-serial-device \
-         -device virtconsole,chardev=hvc1 \
-		 -chardev socket,mux=on,id=hvc2,port=54324,host=localhost \
-         -device virtio-serial-device \
-         -device virtconsole,chardev=hvc2 \
-		 -chardev socket,mux=on,id=hvc3,port=54325,host=localhost \
-         -device virtio-serial-device \
-         -device virtconsole,chardev=hvc3 \
-		 -append "root=/dev/vda earlycon console=hvc0 nokaslr" \
-         -device virtio-net-pci,netdev=net0 \
-         -netdev user,id=net0 \
-         -device virtio-9p-device,fsdev=shr0,mount_tag=shr0 \
-         -fsdev local,security_model=none,path=../../,id=shr0
-
-# 		 -chardev socket,mux=on,id=hvc4,port=54326,host=localhost \
-#          -device virtio-serial-device \
-#          -device virtconsole,chardev=hvc4 \
 
 ifneq ($(filter check check-rust,$(MAKECMDGOALS)),)
 CHECK_DEPS := all
