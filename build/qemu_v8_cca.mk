@@ -643,14 +643,6 @@ QEMU_RUN_ARGS += -s -S -serial tcp:127.0.0.1:$(QEMU_NW_PORT) -serial tcp:127.0.0
 .PHONY: run-only
 run-only:
 	ln -rsf $(ROOT)/out-br/images/rootfs.cpio.gz $(BINARIES_PATH)/
-	$(call check-terminal)
-	$(call run-help)
-	$(call launch-terminal,54321,"Secure")
-	$(call launch-terminal,54320,"Firmware")
-	$(call wait-for-ports,54320,54321)
-	$(call launch-terminal,54322,"host")
-	$(call launch-terminal,54323,"Realm")
-	$(call wait-for-ports,54322,54323)
 	cd $(BINARIES_PATH) && $(QEMU_BUILD)/qemu-system-aarch64 \
          -M virt,virtualization=on,secure=on,gic-version=3 \
          -M acpi=off -cpu max,x-rme=on,sme=off,pauth-impdef=on \
