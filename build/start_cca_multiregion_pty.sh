@@ -3,7 +3,7 @@ set -euo pipefail
 
 SESSION="tcp_session"
 PORTS=(54320 54321 54322 54323 54324 54325 54326)
-NAMES=("firmware" "secure_payload" "host" "realm1" "realm2" "realm3")
+NAMES=("firmware" "secure_payload" "host" "realm1" "realm2" "realm3" "realm4")
 PTYS=(/tmp/firmware_pty /tmp/secure_payload_pty /tmp/host_pty /tmp/realm1_pty /tmp/realm2_pty /tmp/realm3_pty /tmp/realm4_pty)
 
 # logs
@@ -57,7 +57,7 @@ tmux new-window -t "$SESSION" -n "${NAMES[1]}" \
   "screen -L -Logfile ${SCREEN_LOGS[1]} ${PTYS[1]}"
 
 # remaining windows: interactive
-for i in 2 3 4 5; do
+for i in 2 3 4 5 6; do
   tmux new-window -t "$SESSION" -n "${NAMES[$i]}" \
     "screen ${PTYS[$i]}"
 done
