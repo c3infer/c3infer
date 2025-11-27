@@ -698,6 +698,9 @@ run-only-multiregion:
 		 -chardev socket,mux=on,id=hvc3,port=54325,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc3 \
+		 -chardev socket,mux=on,id=hvc4,port=54326,host=localhost \
+         -device virtio-serial-device \
+         -device virtconsole,chardev=hvc4 \
          -append "root=/dev/vda earlycon console=hvc0 nokaslr" \
          -device virtio-net-pci,netdev=net0 \
          -netdev user,id=net0 \
