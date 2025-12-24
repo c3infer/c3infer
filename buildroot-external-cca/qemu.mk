@@ -5,7 +5,7 @@
 ################################################################################
 
 QEMU_CCA_VERSION = cca/2025-06-12
-QEMU_CCA_SITE = ssh://git@gitlab.doc.ic.ac.uk/aalsadi/qemu-private.git
+QEMU_CCA_SITE = ssh://git@gitlab.doc.ic.ac.uk:c3infer/qemu-private.git
 QEMU_CCA_SITE_METHOD = git
 QEMU_CCA_SELINUX_MODULES = qemu virt
 QEMU_CCA_LICENSE = GPL-2.0, LGPL-2.1, MIT, BSD-3-Clause, BSD-2-Clause, Others/BSD-1c
