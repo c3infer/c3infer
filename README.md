@@ -12,4 +12,4 @@ repo sync cca_patches
 cd build
 make -j8 toolchains
 make -j8
-```bash
+```
