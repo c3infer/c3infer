@@ -149,6 +149,7 @@ So, I expect the realm to boot, enter in the init.d and stay there forever.
 /root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -z $((64*1024*1024)) -D encoded_B.mp4
 ```
 If input is empty, the realm should iterate step 1 (it means that B has not written anything yet).
+
 2. Clears the memory:
 ```bash
 /root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -W "" #I haven't tried this but it should clear the memory
