@@ -95,6 +95,7 @@ Workflow (this can be started by userspace with a script):
 /root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:04.0/resource2 -z $((64*1024*1024)) -D output.txt
 ```
 If it read nothing, go back to step 3.
+
 4. Clears the memory:
 ```bash
 /root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:04.0/resource2 -W "" #I haven't tried this but it should clear the memory
