@@ -1,7 +1,7 @@
 # Use case 1 - intro to tools
 In this guide there you can find a guide of the usecases without policy (in normal ivshmem - so never use protected=true in this case)
 
-Starting a realm with a rootfs image (realm **A** and **D**):
+Starting a realm with a rootfs image (realm **A**):
 ```bash
 qemu-system-aarch64\
       -M confidential-guest-support=rme0 \
@@ -21,7 +21,8 @@ qemu-system-aarch64\
       -append "console=hvc0 root=/dev/vda1 rw" < /dev/hvc1 >/dev/hvc1 &
 ```
 
-Starting a realm with 2 shared memory using ivshmem (realms **B** and **C**):
+
+Starting a realm with a rootfs image+network (realm **B**) - please check this it might not work but should be fine:
 ```bash
 qemu-system-aarch64\
       -M confidential-guest-support=rme0 \
@@ -36,24 +37,12 @@ qemu-system-aarch64\
       -device virtio-blk-pci,drive=hd0 \
       -object memory-backend-file,size=64M,share=on,mem-path=/dev/shm/shm1,id=shm1 \
       -device ivshmem-plain,memdev=shm1 \
-      -object memory-backend-file,size=64M,share=on,mem-path=/dev/shm/shm2,id=shm2 \
-      -device ivshmem-plain,memdev=shm2 \
+      -device virtio-net-pci,netdev=net0,romfile= \
+      -netdev user,id=net0 \
       -cpu host -M virt -enable-kvm -M gic-version=3,its=on \
       -smp 1 -m 512M -nographic \
       -append "console=hvc0 root=/dev/vda1 rw" < /dev/hvc1 >/dev/hvc1 &
 ```
-
-**NOTE:** each memdev name corresponds to a shared memory region, so in this case:
-```bash
-      -object memory-backend-file,size=64M,share=on,mem-path=/dev/shm/shm2,id=shm2 \
-      -device ivshmem-plain,memdev=shm2,protected=true \
-```
-all the realms booted with **shm2** will see the same memory.
-So:
-1. for A,B we need **shm1**
-2. for B,C we need **shm2**
-3. for C,D we need **shm3**
-if we want different memories to be different between realms
 
 **NOTE** once the realms boot, the ivshmem devices will appear here (numbers 03,04 may vary but they should be exact - you should be able to find them by listing the devices inside the guest anyway):
 ```bash
@@ -98,7 +87,7 @@ To recompile, run this:
 aarch64-linux-gnu-gcc rw_ivshmem.c -o rw_ivshmem
 ```
 
-# Pipeline: A->B->C->D
+# Service vm A->B (B is service)
 
 We need a 4 realm pipelines, I will describe what each realm should do (the commands are not precise but should be similar):
 
@@ -107,78 +96,45 @@ Shared memory: **shm1**
 Workflow (this can be started by userspace with a script):
 1. Puts the .mp4 into the shared memory (use raw.mp4 inside encoding):
 ```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -F /root/encoding/raw.mp4
+python3 create_ptk.py > pkt.txt #I am not sure it is doing what it should..ideally the print(pkt line should just be printed to pkt.txt)
 ```
-2. Print to console something like: "Started upload..."
+1. Puts the .mp4 into the shared memory (use raw.mp4 inside encoding):
+```bash
+/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -F pkt.txt
+```
+2. Print to console something like: "Uploaded packet"
 
 **Realm B**
-Shared memory: **shm1**, **shm2**
-Workflow:
-**NOTE:** this realm should run in a loop and all the steps below should be put in an init.d file.
-During the loop any possible prints to console **HAVE TO BE SUPPRESSED**, so no prints to console (I will have to disable console later when I install the policies).
-So, I expect the realm to boot, enter in the init.d and stay there forever.
+Shared memory: **shm1**
+Workflow (can be started by userspace):
 1. Reads the file from shared memory:
 ```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -z $((64*1024*1024)) -D input.mp4
+/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -z $((64*1024*1024)) -D pkt.txt
 ```
 If input is empty, the realm should iterate step 1 (it means that A has not written anything yet).
 2. Clears the memory:
 ```bash
 /root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -W "" #I haven't tried this but it should clear the memory
 ```
-3. Runs encoding:
+3. Sends the packet. I haven't implemented the script but its very simple with scapy..raw_ip should be the content of pkt.txt:
+**NOTE**: it sends a packet into the eth0 interface, but perhaps it had another name, check the name of it by running **ip a** or **ifconfig**.
 ```bash
-python3 encode_video.py input.mp4 encoded.mp4
-```
-4. Puts the encoded .mp4 into the file:
-**NOTE:** this uses **shm2** (to communicate with C)
-```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:04.0/resource2 -F encoded.mp4
-```
-Then, goes back to step 1.
+#!/usr/bin/env python3
+from scapy.all import IP, send
 
+def main():
+    # Suppose these came from "bytes(pkt)" stored somewhere:
+    raw_ip = b"..."
 
-**Realm C**
-Shared memory: **shm2**, **shm3**
-Workflow:
-**NOTE:** this realm should run in a loop and all the steps below should be put in an init.d file.
-During the loop any possible prints to console **HAVE TO BE SUPPRESSED**, so no prints to console (I will have to disable console later when I install the policies).
-So, I expect the realm to boot, enter in the init.d and stay there forever.
-1. Reads the file from shared memory:
-```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -z $((64*1024*1024)) -D encoded_B.mp4
-```
-If input is empty, the realm should iterate step 1 (it means that B has not written anything yet).
+    # Reconstruct the packet from bytes (L3)
+    pkt = IP(raw_ip)
 
-2. Clears the memory:
-```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -W "" #I haven't tried this but it should clear the memory
-```
-3. Runs nudity checks:
-```bash
-python3 analyze_video.py encoded_B.mp4
-```
-4. Puts the encoded .mp4 into the file:
-**NOTE:** this uses **shm3** (to communicate with D)
-```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:04.0/resource2 -F encoded_B.mp4
-```
-Then, goes back to step 1.
+    # Send at Layer 3 (kernel will choose outgoing interface via routing)
+    send(pkt, iface="eth0", verbose=1)
 
-**Realm D**
-Shared memory: **shm3**
-Workflow:
-**NOTE:** this realm should run in a loop and all the steps below should be put in an init.d file.
-So, I expect the realm to boot, enter in the init.d and stay there forever.
-1. Reads the file from shared memory:
-```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -z $((64*1024*1024)) -D output.mp4
+if __name__ == "__main__":
+    main()
 ```
-If input is empty, the realm should iterate step 1 (it means that C has not written anything yet).
 
-2. Clears the memory:
-```bash
-/root/rw_ivshmem -f /sys/bus/pci/devices/0000:00:03.0/resource2 -W "" #I haven't tried this but it should clear the memory
-```
-3. Prints something to console, like: "Video uploaded..waiting for next upload"
+4. Prints something like: packet sent..
 Then, goes back to step 1.

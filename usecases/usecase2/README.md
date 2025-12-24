@@ -20,7 +20,7 @@ qemu-system-aarch64\
       -device ivshmem-plain,memdev=shm2 \
       -cpu host -M virt -enable-kvm -M gic-version=3,its=on \
       -smp 1 -m 512M -nographic \
-      -append "console=hvc0 root=/dev/vda1 rw rsi_policy=/root/config/test/policy1.json" < /dev/hvc1 >/dev/hvc1 &
+      -append "console=hvc0 root=/dev/vda1 rw" < /dev/hvc1 >/dev/hvc1 &
 ```
 
 **NOTE:** each memdev name corresponds to a shared memory region, so in this case:
