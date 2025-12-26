@@ -14,8 +14,6 @@ cd build
 make -j8 toolchains
 make -j8
 ```
-<<<<<<< HEAD
-=======
 
 ## Run Qemu
 a) Start ptys:
@@ -31,4 +29,3 @@ make run-only
 ```
 
 ## Boot realms for use-cases
->>>>>>> 21bba74 (update README)
