@@ -1,7 +1,7 @@
 # cca_patches
 Patches for our project
 
-Requirements: ts
+Requirements: ts, tmux
 
 ## Build components
 ```
@@ -18,14 +18,15 @@ make -j8
 ## Run Qemu
 a) Start ptys:
 ```
-./build/start_cca_pty.sh
+./build/start_cca_multiregion_pty.sh
 ```
 
 b) Open a new concole in tmux with `ctrl+b+c`
 
 c) Run Qemu:
 ```
-make run-only
+make run-only-multiregion
 ```
 
-## Boot realms for use-cases
+## Boot realms for use cases
+For reproducing each use case, please follow the guidance provided at [use cases](https://gitlab.doc.ic.ac.uk/c3infer/cca_patches/-/tree/master/usecases?ref_type=heads) page.

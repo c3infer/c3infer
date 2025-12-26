@@ -649,7 +649,7 @@ run-only:
          -m 3G -smp 4 \
          -nographic \
          -bios flash.bin \
-		 -kernel Image  \
+	 -kernel $(KERNEL_IMAGE) \
          -drive format=raw,if=none,file=$(ROOT)/out-br/images/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
@@ -679,7 +679,7 @@ run-only-multiregion:
          -m 3G -smp 4 \
          -nographic \
          -bios flash.bin \
-		 -kernel Image  \
+	 -kernel $(KERNEL_IMAGE) \
          -drive format=raw,if=none,file=$(ROOT)/out-br/images/rootfs.ext4,id=hd0 \
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
