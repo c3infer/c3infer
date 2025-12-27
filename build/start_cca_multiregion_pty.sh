@@ -3,7 +3,7 @@ set -euo pipefail
 
 SESSION="tcp_session"
 PORTS=(54320 54321 54322 54323 54324 54325 54326)
-NAMES=("firmware" "secure_payload" "host" "realm1" "realm2" "realm3" "realm4")
+NAMES=("firmware" "secure_payload" "host" "realm A" "realm B" "realm C" "realm D")
 PTYS=(/tmp/firmware_pty /tmp/secure_payload_pty /tmp/host_pty /tmp/realm1_pty /tmp/realm2_pty /tmp/realm3_pty /tmp/realm4_pty)
 
 # logs

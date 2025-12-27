@@ -27,6 +27,7 @@
     <linkfile src="build/qemu_v8_cca.mk" dest="build/Makefile"/>
     <copyfile src="build/start_cca_multiregion_pty.sh" dest="build/start_cca_multiregion_pty.sh"/>
     <copyfile src="build/start_cca_pty.sh" dest="build/start_cca_pty.sh"/>
+    <copyfile src="usecases/usecase1.sh" dest="out/bin/usecase1.sh"/>
   </project>
   <project name="cloud-hypervisor" remote="clo" revision="cca/v3"/>
   <project name="firmware/SCP-firmware.git" path="SCP-firmware" remote="arm-gitlab" revision="refs/tags/v2.13.0" clone-depth="1"/>
