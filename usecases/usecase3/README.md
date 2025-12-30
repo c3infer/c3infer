@@ -138,3 +138,22 @@ if __name__ == "__main__":
 
 4. Prints something like: packet sent..
 Then, goes back to step 1.
+
+# START THE USECASE
+**Host**
+Start the realms:
+```bash
+./usecase3.sh
+```
+**Realm2**
+Create pkt, write it in shmem:
+```bash
+cd usecase3
+./script2.sh
+```
+**Realm1**
+Read pkt from shmem, send it:
+```bash
+cd usecase3
+./script1.sh
+```

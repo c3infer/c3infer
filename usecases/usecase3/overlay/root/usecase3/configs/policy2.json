@@ -1,0 +1,21 @@
+{
+  "Self": "VM2",
+  "VM1": { "hash": 0x1, "allowed-untrusted": true, "allowed-other-mappings": true },
+  "VM2": { "hash": 0x2, "allowed-untrusted": true, "allowed-other-mappings": true },
+  "Mem1": {
+    "size": 0x4000000,
+    "properties": "PROTECTED|FRESH",
+    "on-remove": "CLEAN",
+    "owner": "VM1",
+    "mapped": "NONE",
+    "mappings": {
+      "VM1": { "gpa": 0x18000000000, "prot": "R" },
+      "ANY": { "gpa": 0x18000000000, "prot": "W" }
+    }
+  },
+  "Ch1": {
+    "owner": "VM2",
+    "range": ["RSI","OTHER"],
+    "policy": "BLOCK"
+  }
+}

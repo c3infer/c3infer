@@ -98,6 +98,18 @@ To recompile, run this:
 aarch64-linux-gnu-gcc rw_ivshmem.c -o rw_ivshmem
 ```
 
+If you have the disk:
+```bash
+sudo apt-get update
+sudo apt-get install -y qemu-user-static binfmt-support
+
+# Register binfmt handlers for qemu in Docker
+sudo docker run --privileged --rm tonistiigi/binfmt --install arm64
+
+sudo docker run --rm -it --platform=linux/arm64 -v "$PWD":/src -w /src debian:bookworm bash -lc \
+"apt-get update && apt-get install -y build-essential && gcc -O2 -Wall -o rw_ivshmem rw_ivshmem.c"
+```
+
 # Pipeline: A->B->C->D
 
 We need a 4 realm pipelines, I will describe what each realm should do (the commands are not precise but should be similar):
