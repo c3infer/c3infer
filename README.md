@@ -3,7 +3,7 @@ Patches for our project
 
 Requirements: ts, tmux
 
-## Build components
+## 1 Build components
 ```
 mkdir c3infer
 cd c3infer
@@ -15,7 +15,7 @@ make -j8 toolchains
 make -j8
 ```
 
-## Run QEMU
+## 2 Run QEMU
 a) Start ptys:
 ```
 ./start_cca_multiregion_pty.sh
@@ -29,5 +29,5 @@ make run-only-multiregion
 ```
 d) Open host concole and log into NW userspace with `root` username.
 
-## Boot realms for use cases
+## 3 Boot realms for use cases
 For reproducing each use case, please follow the guidance provided at [use cases](https://gitlab.doc.ic.ac.uk/c3infer/cca_patches/-/tree/master/usecases?ref_type=heads) page.

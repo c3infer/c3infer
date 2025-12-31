@@ -28,6 +28,11 @@
     <copyfile src="build/start_cca_multiregion_pty.sh" dest="build/start_cca_multiregion_pty.sh"/>
     <copyfile src="build/start_cca_pty.sh" dest="build/start_cca_pty.sh"/>
     <copyfile src="usecases/usecase1.sh" dest="out/bin/usecase1.sh"/>
+    <copyfile src="usecases/usecase2.sh" dest="out/bin/usecase2.sh"/>
+    <copyfile src="usecases/usecase3.sh" dest="out/bin/usecase3.sh"/>
+    <copyfile src="usecases/usecase1_Auto.sh" dest="out/bin/usecase1_Auto.sh"/>
+    <copyfile src="usecases/usecase2_Auto.sh" dest="out/bin/usecase2_Auto.sh"/>
+
   </project>
   <project name="cloud-hypervisor" remote="clo" revision="cca/v3"/>
   <project name="firmware/SCP-firmware.git" path="SCP-firmware" remote="arm-gitlab" revision="refs/tags/v2.13.0" clone-depth="1"/>
