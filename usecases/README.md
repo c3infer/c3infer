@@ -7,9 +7,15 @@ For running each use case, you simply need to run the particular script:
  [address]\usecase[number]_Auto.sh 
  ```
 
- These scripts span multiple realms required for each use case which can be accessed through specific tmux concoles. Each realm is assigned to run a particular script after boot (so you do not need to do anything after realm's boot except looking at the logs within each realm). These scripts are accessible in [link]() with a specific naming format. For example realm B in use case 2 executes `usecase2_realm_B_Auto.sh`. Similar scripts are written for other realms and other use cases.
+Each automated script spans multiple *realms* required for the given use case. These realms can be accessed through dedicated `tmux` consoles. For each realm, a specific script is automatically executed after boot, so no manual interaction is required beyond monitoring the logs within each realm.
+
+All realm-specific scripts are available at [link]() and follow a consistent naming convention. For example, **Realm B** in **Use Case 2** executes the script `usecase2_realm_B_Auto.sh`
 
  ## Customized Run of Use Cases
+If you prefer to run customized experiments, you can execute the standard scripts that create multiple realms with shared memory configured between them, without automatically running a default script in each realm:
+ ```
+ [address]\usecase[number].sh 
+ ```
 
 
 
