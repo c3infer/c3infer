@@ -1,0 +1,45 @@
+From c6f28dadd4b435bd810ef54d930f578d9d8aa049 Mon Sep 17 00:00:00 2001
+From: Amir Al Sadi <alsadi.amir@gmail.com>
+Date: Mon, 27 Oct 2025 16:16:21 +0000
+Subject: [PATCH 09/14] adding bookkeeping for protected shared pages
+
+---
+ arch/arm64/kvm/mmu.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/kvm/mmu.c b/arch/arm64/kvm/mmu.c
+index 8f7c25236abc..d3431242a281 100644
+--- a/arch/arm64/kvm/mmu.c
++++ b/arch/arm64/kvm/mmu.c
+@@ -1666,7 +1666,7 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
+ 	bool exec_fault, mte_allowed;
+ 	bool device = false, vfio_allow_any_uc = false;
+ 	unsigned long mmu_seq;
+-	phys_addr_t ipa = fault_ipa;
++	phys_addr_t ipa = fault_ipa; //, f_ipa = fault_ipa;
+ 	struct kvm *kvm = vcpu->kvm;
+ 	struct vm_area_struct *vma;
+ 	short vma_shift;
+@@ -1962,13 +1962,16 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
+ 			ret = realm_bind_ipa_protected_shared(kvm, fault_ipa, pfn, PAGE_SIZE, prot,
+ 							memcache);
+ 			if (!ret){
+-				return 1; /* Handled */
++				ret = 0;
++				writable = true;
+ 			} else {
+ 				/* FIXME: Should be able to use bigger than PAGE_SIZE mappings */
+ 				ret = realm_map_ipa_protected_shared(kvm, fault_ipa, pfn, PAGE_SIZE, prot,
+ 							memcache);
+-				if (!ret)
+-					return 1; /* Handled */
++				if (!ret){
++					ret = 0;
++					writable = true;
++				}
+ 			}
+ 		} else{
+ 			ret = realm_map_ipa(kvm, fault_ipa, pfn, vma_pagesize,
+-- 
+2.34.1
+

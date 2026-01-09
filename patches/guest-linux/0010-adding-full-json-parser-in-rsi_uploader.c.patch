@@ -1,0 +1,1546 @@
+From 59e8ec5d534379181c233b04ddd9a095b3993f44 Mon Sep 17 00:00:00 2001
+From: Amir Al Sadi <alsadi.amir@gmail.com>
+Date: Wed, 12 Nov 2025 17:55:23 +0000
+Subject: [PATCH 10/18] adding full json parser in rsi_uploader.c
+
+---
+ drivers/misc/rsi_uploader.c     | 904 +++++++++++++++++++++++---------
+ drivers/misc/rsi_uploader.c.old | 478 +++++++++++------
+ 2 files changed, 983 insertions(+), 399 deletions(-)
+
+diff --git a/drivers/misc/rsi_uploader.c b/drivers/misc/rsi_uploader.c
+index 8a5f5371fa85..7e658b257153 100644
+--- a/drivers/misc/rsi_uploader.c
++++ b/drivers/misc/rsi_uploader.c
+@@ -3,35 +3,7 @@
+ // rsi_policy_json.c
+ // Read a fixed-shape JSON policy and tell the RMM where the resulting
+ // binary buffer lives (IPA == page address)
+-//
+-// expected JSON:
+-//
+-// {
+-//   "Self": "VM1",
+-//   "VM1": { "hash": 0xffaaa1, "allowed-untrusted": false },
+-//   "VM2": { "hash": 0xffaaa2, "allowed-untrusted": false },
+-//   "PS12": {
+-//     "size": 0x1000,
+-//     "mappings": [
+-//       "VM1": { "gpa": 0x4000, "prot": RW },
+-//       "VM2": { "gpa": 0x7000, "prot": R  }
+-//     ]
+-//   }
+-// }
+-//
+-// we turn that into the binary the RMM parser expects:
+-//
+-// u32 magic = 'PAYL'
+-// u16 version = 1
+-// u16 self_vm_index (0 for VM1, 1 for VM2, 0xffff for none)
+-// u16 num_vms = 2
+-// u16 num_ps  = 1
+-// u16 reserved = 0
+-// ---- VM1 rec (12B) ----
+-// ---- VM2 rec (12B) ----
+-// ---- PS12 + 2 mappings ----
+-//
+-// then we do SMC(RSI_PARSE_CONFIG, ipa)
++
+ 
+ #include <linux/module.h>
+ #include <linux/fs.h>
+@@ -55,6 +27,26 @@ static unsigned long rsi_fid = 0xC40002F0; /* your new RSI: x0=fid, x1=ipa */
+ module_param(rsi_fid, ulong, 0644);
+ MODULE_PARM_DESC(rsi_fid, "RSI SMC function ID for rsi_parse_config");
+ 
++
++/* ---- Caps (can be overridden at build time) ---- */
++#ifndef PARSER_MAX_VMS
++#define PARSER_MAX_VMS    4
++#endif
++#ifndef PARSER_MAX_PS
++#define PARSER_MAX_PS     4
++#endif
++#ifndef PARSER_MAX_MAPS
++#define PARSER_MAX_MAPS   4
++#endif
++
++/* ---- Constants matching your RMM stub ---- */
++#define PAYLOAD_MAGIC 0x5041594cU /* 'PAYL' */
++#define BIN_PAGE_SIZE PAGE_SIZE
++
++enum { PROT_R = 1, PROT_W = 2, PROT_RW = 3 };
++enum { PS_PROP_PROTECTED = 1u << 0, PS_PROP_FRESH = 1u << 1 };
++enum { PS_ON_REMOVE_NONE = 0, PS_ON_REMOVE_CLEAN = 1 };
++
+ // ---------------------------------------------------------------------
+ // helpers to read the file into a NUL-terminated buffer
+ // ---------------------------------------------------------------------
+@@ -98,241 +90,668 @@ static char *read_file_nul(const char *p, size_t *out_len)
+ 	return buf;
+ }
+ 
+-// ---------------------------------------------------------------------
+-// ultra-tiny JSON “parsing” helpers
+-// these all assume the key exists and is unique
+-// ---------------------------------------------------------------------
+-static const char *find_key(const char *json, const char *key)
++/* Minimal, always-available NUL-terminating copy.
++ * Returns number of bytes copied (not including NUL).
++ */
++static inline size_t k_strscpy(char *dst, const char *src, size_t dstsz)
+ {
+-	/* we look for "key" literally */
+-	char pat[32];
+-	size_t k = strlen(key);
++    size_t n;
+ 
+-	if (k + 2 >= sizeof(pat))
+-		return NULL;
++    if (!dst || !dstsz)
++        return 0;
+ 
+-	pat[0] = '"';
+-	memcpy(pat + 1, key, k);
+-	pat[1 + k] = '"';
+-	pat[2 + k] = '\0';
++    n = strnlen(src, dstsz - 1);
++    memcpy(dst, src, n);
++    dst[n] = '\0';
++    return n;
++}
+ 
+-	return strstr(json, pat);
++/* ---------- Minimal JSON tokenizer (strings, booleans, dec/0x numbers) ---------- */
++struct js {
++    const char *s;
++    size_t n;
++    size_t i;
++};
++
++static void js_skip(struct js *j)
++{
++    while (j->i < j->n) {
++        char c = j->s[j->i];
++        if (c == ' ' || c == '\t' || c == '\n' || c == '\r')
++            j->i++;
++        else
++            break;
++    }
+ }
+ 
+-static int extract_string_after(const char *pos, char *out, size_t outlen)
++static int js_expect(struct js *j, char ch)
+ {
+-	const char *colon, *q1, *q2;
+-	colon = strchr(pos, ':');
+-	if (!colon) return -EINVAL;
+-	q1 = strchr(colon, '"');
+-	if (!q1) return -EINVAL;
+-	q2 = strchr(q1 + 1, '"');
+-	if (!q2) return -EINVAL;
+-	if ((size_t)(q2 - (q1 + 1)) >= outlen)
+-		return -ENOSPC;
+-	memcpy(out, q1 + 1, q2 - (q1 + 1));
+-	out[q2 - (q1 + 1)] = '\0';
+-	return 0;
++    js_skip(j);
++    if (j->i >= j->n || j->s[j->i] != ch)
++        return -EINVAL;
++    j->i++;
++    return 0;
++}
++
++static int js_maybe(struct js *j, char ch)
++{
++    js_skip(j);
++    if (j->i < j->n && j->s[j->i] == ch) {
++        j->i++;
++        return 1;
++    }
++    return 0;
+ }
+ 
+-static int extract_u32_after(const char *pos, u32 *out)
++static int js_peek(struct js *j, char *out)
+ {
+-	const char *colon = strchr(pos, ':');
+-	char *endp;
+-	unsigned long v;
++    js_skip(j);
++    if (j->i >= j->n)
++        return -EINVAL;
++    *out = j->s[j->i];
++    return 0;
++}
+ 
+-	if (!colon) return -EINVAL;
+-	colon++;
+-	while (*colon == ' ' || *colon == '\t')
+-		colon++;
++/* Parse "string" (handles \" and \\). Truncates to outsz-1. */
++static int js_string(struct js *j, char *out, size_t outsz)
++{
++    size_t p = 0;
++    if (js_expect(j, '"'))
++        return -EINVAL;
++
++    while (j->i < j->n) {
++        char c = j->s[j->i++];
++        if (c == '"')
++            break;
++        if (c == '\\') {
++            if (j->i >= j->n) return -EINVAL;
++            c = j->s[j->i++];
++            if (c != '"' && c != '\\') return -EINVAL; /* keep minimal */
++        }
++        if (p + 1 < outsz)
++            out[p++] = c;
++    }
++    if (p < outsz)
++        out[p] = '\0';
++    return 0;
++}
+ 
+-	v = simple_strtoul(colon, &endp, 0);
+-	*out = (u32)v;
+-	return 0;
++static int js_bool(struct js *j, int *val)
++{
++    js_skip(j);
++    if (j->i + 3 < j->n && !strncmp(&j->s[j->i], "true", 4)) {
++        *val = 1; j->i += 4; return 0;
++    }
++    if (j->i + 4 < j->n && !strncmp(&j->s[j->i], "false", 5)) {
++        *val = 0; j->i += 5; return 0;
++    }
++    return -EINVAL;
+ }
+ 
+-static int extract_u64_after(const char *pos, u64 *out)
++static int js_number_u64(struct js *j, unsigned long long *out)
+ {
+-	const char *colon = strchr(pos, ':');
+-	char *endp;
+-	unsigned long long v;
++    unsigned long long x = 0;
++    int base = 10, have = 0;
++
++    js_skip(j);
++    if (j->i >= j->n) return -EINVAL;
++
++    if (j->s[j->i] == '0' && j->i + 1 < j->n &&
++        (j->s[j->i+1] == 'x' || j->s[j->i+1] == 'X')) {
++        base = 16; j->i += 2;
++    }
++
++    if (base == 16) {
++        while (j->i < j->n) {
++            char c = j->s[j->i];
++            int v = -1;
++            if (c >= '0' && c <= '9') v = c - '0';
++            else if (c >= 'a' && c <= 'f') v = 10 + (c - 'a');
++            else if (c >= 'A' && c <= 'F') v = 10 + (c - 'A');
++            else break;
++            x = (x << 4) + (unsigned long long)v;
++            have = 1; j->i++;
++        }
++    } else {
++        while (j->i < j->n) {
++            char c = j->s[j->i];
++            if (c < '0' || c > '9') break;
++            x = x * 10ull + (unsigned long long)(c - '0');
++            have = 1; j->i++;
++        }
++    }
++
++    if (!have) return -EINVAL;
++    *out = x;
++    return 0;
++}
++
++static int js_number_u32(struct js *j, unsigned int *out)
++{
++    unsigned long long v;
++    if (js_number_u64(j, &v)) return -EINVAL;
++    *out = (unsigned int)v;
++    return 0;
++}
+ 
+-	if (!colon) return -EINVAL;
+-	colon++;
+-	while (*colon == ' ' || *colon == '\t')
+-		colon++;
++/* ---------- Small helpers ---------- */
+ 
+-	v = simple_strtoull(colon, &endp, 0);
+-	*out = (u64)v;
+-	return 0;
++static void copy_name4(char out[4], const char *src)
++{
++    memset(out, 0, 4);
++    {
++        size_t n = strlen(src);
++        if (n > 4) n = 4;
++        memcpy(out, src, n);
++    }
+ }
+ 
+-static int extract_bool_after(const char *pos, u8 *out)
++static int looks_vm(const char *k)  { return (k[0]=='V' && k[1]=='M'); }
++static int looks_mem(const char *k) { return (k[0]=='M' && k[1]=='e' && k[2]=='m'); }
++
++static unsigned short prot_from_str(const char *s)
+ {
+-	const char *colon = strchr(pos, ':');
+-	if (!colon) return -EINVAL;
+-	colon++;
+-	while (*colon == ' ' || *colon == '\t')
+-		colon++;
+-	if (strncmp(colon, "true", 4) == 0)
+-		*out = 1;
+-	else
+-		*out = 0;
+-	return 0;
++    int r = (strchr(s, 'R') != NULL);
++    int w = (strchr(s, 'W') != NULL);
++    if (r && w) return PROT_RW;
++    if (r)      return PROT_R;
++    if (w)      return PROT_W;
++    return 0;
+ }
+ 
+-// ---------------------------------------------------------------------
+-// build the RMM binary into a single page
+-// layout matches the RMM-side parser we discussed
+-// ---------------------------------------------------------------------
+-#define PAYLOAD_MAGIC 0x5041594cU  /* 'PAYL' */
+-#define BIN_PAGE_SIZE PAGE_SIZE
++static unsigned int props_from_str(const char *s)
++{
++    unsigned int f = 0;
++    if (strstr(s, "PROTECTED")) f |= PS_PROP_PROTECTED;
++    if (strstr(s, "FRESH"))     f |= PS_PROP_FRESH;
++    return f;
++}
+ 
+-static int build_binary_from_json(const char *json, u8 *out, size_t out_sz, size_t *used_sz)
++static int onremove_from_str(const char *s, unsigned short *out)
+ {
+-	const char *self_pos, *vm1_pos, *vm2_pos, *ps_pos;
+-	const char *vm1_hash_pos, *vm1_allow_pos;
+-	const char *vm2_hash_pos, *vm2_allow_pos;
+-	const char *ps_size_pos;
+-	const char *map_vm1_pos, *map_vm2_pos;
+-	const char *vm1_gpa_pos, *vm1_prot_pos;
+-	const char *vm2_gpa_pos, *vm2_prot_pos;
+-	u16 self_idx = 0xffff;
+-	u32 vm1_hash, vm2_hash;
+-	u8 vm1_allow, vm2_allow;
+-	u32 ps_size;
+-	u64 vm1_gpa, vm2_gpa;
+-	u16 vm1_prot = 0, vm2_prot = 0;
+-	u8 *p = out;
+-
+-	if (out_sz < 256)
+-		return -ENOSPC;
+-
+-	self_pos = find_key(json, "Self");
+-	vm1_pos  = find_key(json, "VM1");
+-	vm2_pos  = find_key(json, "VM2");
+-	ps_pos   = find_key(json, "PS12");
+-	if (!self_pos || !vm1_pos || !vm2_pos || !ps_pos)
+-		return -EINVAL;
+-
+-	/* Self */
+-	{
+-		char self_name[8];
+-		if (extract_string_after(self_pos, self_name, sizeof(self_name)))
+-			return -EINVAL;
+-		if (!strcmp(self_name, "VM1"))
+-			self_idx = 0;
+-		else if (!strcmp(self_name, "VM2"))
+-			self_idx = 1;
+-		else
+-			self_idx = 0xffff;
+-	}
++    if (!strcmp(s, "CLEAN")) { *out = PS_ON_REMOVE_CLEAN; return 0; }
++    if (!strcmp(s, "NONE"))  { *out = PS_ON_REMOVE_NONE;  return 0; }
++    return -EINVAL;
++}
+ 
+-	/* VM1 */
+-	vm1_hash_pos  = strstr(vm1_pos, "hash");
+-	vm1_allow_pos = strstr(vm1_pos, "allowed-untrusted");
+-	if (!vm1_hash_pos || !vm1_allow_pos)
+-		return -EINVAL;
+-	extract_u32_after(vm1_hash_pos, &vm1_hash);
+-	extract_bool_after(vm1_allow_pos, &vm1_allow);
+-
+-	/* VM2 */
+-	vm2_hash_pos  = strstr(vm2_pos, "hash");
+-	vm2_allow_pos = strstr(vm2_pos, "allowed-untrusted");
+-	if (!vm2_hash_pos || !vm2_allow_pos)
+-		return -EINVAL;
+-	extract_u32_after(vm2_hash_pos, &vm2_hash);
+-	extract_bool_after(vm2_allow_pos, &vm2_allow);
+-
+-	/* PS12 */
+-	ps_size_pos = strstr(ps_pos, "size");
+-	if (!ps_size_pos)
+-		return -EINVAL;
+-	extract_u32_after(ps_size_pos, &ps_size);
+-
+-	/* mappings: we know there are exactly 2, VM1 + VM2 */
+-	map_vm1_pos = strstr(ps_pos, "\"VM1\"");
+-	map_vm2_pos = strstr(ps_pos, "\"VM2\"");
+-	if (!map_vm1_pos || !map_vm2_pos)
+-		return -EINVAL;
+-
+-	vm1_gpa_pos  = strstr(map_vm1_pos, "gpa");
+-	vm1_prot_pos = strstr(map_vm1_pos, "prot");
+-	vm2_gpa_pos  = strstr(map_vm2_pos, "gpa");
+-	vm2_prot_pos = strstr(map_vm2_pos, "prot");
+-	if (!vm1_gpa_pos || !vm1_prot_pos || !vm2_gpa_pos || !vm2_prot_pos)
+-		return -EINVAL;
+-
+-	extract_u64_after(vm1_gpa_pos, &vm1_gpa);
+-	extract_u64_after(vm2_gpa_pos, &vm2_gpa);
+-
+-	if (strstr(vm1_prot_pos, "RW"))
+-		vm1_prot = 2;
+-	else if (strstr(vm1_prot_pos, "W"))
+-		vm1_prot = 1;
+-	else
+-		vm1_prot = 0;
+-
+-	if (strstr(vm2_prot_pos, "RW"))
+-		vm2_prot = 2;
+-	else if (strstr(vm2_prot_pos, "W"))
+-		vm2_prot = 1;
+-	else
+-		vm2_prot = 0;
+-
+-	/* ---- write binary ---- */
+-
+-	/* header: 16 bytes */
+-	*(u32 *)(p + 0)  = PAYLOAD_MAGIC;
+-	*(u16 *)(p + 4)  = 1;          /* version */
+-	*(u16 *)(p + 6)  = self_idx;
+-	*(u16 *)(p + 8)  = 2;          /* num_vms */
+-	*(u16 *)(p +10)  = 1;          /* num_ps */
+-	*(u16 *)(p +12)  = 0;
+-	*(u16 *)(p +14)  = 0;
+-	p += 16;
+-
+-	/* VM1 rec (12B) */
+-	memcpy(p + 0, "VM1", 3); p[3] = '\0';
+-	*(u32 *)(p + 4) = vm1_hash;
+-	p[8]  = vm1_allow;
+-	p[9]  = 0;
+-	p[10] = 0;
+-	p[11] = 0;
+-	p += 12;
+-
+-	/* VM2 rec (12B) */
+-	memcpy(p + 0, "VM2", 3); p[3] = '\0';
+-	*(u32 *)(p + 4) = vm2_hash;
+-	p[8]  = vm2_allow;
+-	p[9]  = 0;
+-	p[10] = 0;
+-	p[11] = 0;
+-	p += 12;
+-
+-	/* PS12 (12B header) */
+-	memcpy(p + 0, "PS12", 4);
+-	*(u32 *)(p + 4) = ps_size;
+-	*(u16 *)(p + 8) = 2;  /* 2 mappings */
+-	*(u16 *)(p +10) = 0;
+-	p += 12;
+-
+-	/* mapping 0: VM1 */
+-	*(u16 *)(p + 0) = 0;        /* vm index */
+-	*(u16 *)(p + 2) = vm1_prot;
+-	*(u64 *)(p + 4) = vm1_gpa;
+-	p += 12;
+-
+-	/* mapping 1: VM2 */
+-	*(u16 *)(p + 0) = 1;        /* vm index */
+-	*(u16 *)(p + 2) = vm2_prot;
+-	*(u64 *)(p + 4) = vm2_gpa;
+-	p += 12;
+-
+-	*used_sz = p - out;
+-	return 0;
++/* ---------- Staging structs (simple C, fixed caps) ---------- */
++
++struct st_vm {
++    char name4[4];
++    unsigned int hash;
++    unsigned char allowed_untrusted;
++    unsigned char allowed_other_mappings;
++};
++
++struct st_map {
++    unsigned short vm_index; /* resolved after VMs known */
++    unsigned short prot;
++    unsigned long long gpa;
++    char vm_name_tmp[8];     /* name before resolution */
++};
++
++struct st_ps {
++    char name4[4];
++    unsigned int size;
++    unsigned int properties;
++    unsigned short on_remove;
++    unsigned short owner_vm_index;  /* resolved later */
++    char owner_name_tmp[8];
++
++    unsigned short num_maps;
++    struct st_map maps[PARSER_MAX_MAPS];
++};
++
++struct st_ctx {
++    char self_name4[4];
++    unsigned short self_vm_index;
++
++    struct st_vm vms[PARSER_MAX_VMS];
++    struct st_ps ps[PARSER_MAX_PS];
++    unsigned short num_vms, num_ps;
++};
++
++/* ---------- Parse "VM*" object ---------- */
++
++static int parse_vm_obj(struct js *j, struct st_vm *vm)
++{
++    if (js_expect(j, '{')) return -EINVAL;
++
++    while (1) {
++        if (js_maybe(j, '}')) break;
++
++        {
++            char key[32];
++            if (js_string(j, key, sizeof(key))) return -EINVAL;
++            if (js_expect(j, ':')) return -EINVAL;
++
++            if (!strcmp(key, "hash")) {
++                unsigned int v;
++                if (js_number_u32(j, &v)) return -EINVAL;
++                vm->hash = v;
++                pr_info("VM '%c%c%c%c': hash=0x%08x\n",
++                        vm->name4[0], vm->name4[1], vm->name4[2], vm->name4[3], vm->hash);
++            } else if (!strcmp(key, "allowed-untrusted")) {
++                int b;
++                if (js_bool(j, &b)) return -EINVAL;
++                vm->allowed_untrusted = (unsigned char)b;
++                pr_info("VM '%c%c%c%c': allowed-untrusted=%u\n",
++                        vm->name4[0], vm->name4[1], vm->name4[2], vm->name4[3],
++                        (unsigned)vm->allowed_untrusted);
++            } else if (!strcmp(key, "allowed-other-mappings")) {
++                int b;
++                if (js_bool(j, &b)) return -EINVAL;
++                vm->allowed_other_mappings = (unsigned char)b;
++                pr_info("VM '%c%c%c%c': allowed-other-mappings=%u\n",
++                        vm->name4[0], vm->name4[1], vm->name4[2], vm->name4[3],
++                        (unsigned)vm->allowed_other_mappings);
++            } else {
++                return -EINVAL;
++            }
++        }
++
++        if (!js_maybe(j, ',')) {
++            if (js_expect(j, '}')) return -EINVAL;
++            break;
++        }
++    }
++    return 0;
+ }
+ 
++/* ---------- Parse one mapping object ---------- */
++
++static int parse_map_obj(struct js *j, struct st_map *m)
++{
++    if (js_expect(j, '{')) return -EINVAL;
++
++    while (1) {
++        if (js_maybe(j, '}')) break;
++
++        {
++            char key[32];
++            if (js_string(j, key, sizeof(key))) return -EINVAL;
++            if (js_expect(j, ':')) return -EINVAL;
++
++            if (!strcmp(key, "gpa")) {
++                unsigned long long v;
++                if (js_number_u64(j, &v)) return -EINVAL;
++                m->gpa = v;
++            } else if (!strcmp(key, "prot")) {
++                char prot[8];
++                if (js_string(j, prot, sizeof(prot))) return -EINVAL;
++                m->prot = prot_from_str(prot);
++                if (!m->prot) return -EINVAL;
++            } else {
++                return -EINVAL;
++            }
++        }
++
++        if (!js_maybe(j, ',')) {
++            if (js_expect(j, '}')) return -EINVAL;
++            break;
++        }
++    }
++
++    pr_info("  map -> vm='%s' gpa=0x%llx prot=%u\n",
++            m->vm_name_tmp, m->gpa, (unsigned)m->prot);
++    return 0;
++}
++
++/* ---------- Parse mappings dictionary ---------- */
++
++static int parse_mappings_dict(struct js *j, struct st_ps *ps)
++{
++    if (js_expect(j, '{')) return -EINVAL;
++
++    while (1) {
++        char c;
++        if (js_peek(j, &c)) return -EINVAL;
++        if (c == '}') { j->i++; break; }
++
++        {
++            char vmname[8];
++            if (js_string(j, vmname, sizeof(vmname))) return -EINVAL;
++            if (js_expect(j, ':')) return -EINVAL;
++
++            if (ps->num_maps >= PARSER_MAX_MAPS) return -EINVAL;
++            {
++                struct st_map *m = &ps->maps[ps->num_maps];
++                memset(m, 0, sizeof(*m));
++                k_strscpy(m->vm_name_tmp, vmname, sizeof(m->vm_name_tmp));
++                if (parse_map_obj(j, m)) return -EINVAL;
++                ps->num_maps++;
++            }
++        }
++
++        if (!js_maybe(j, ',')) {
++            if (js_expect(j, '}')) return -EINVAL;
++            break;
++        }
++    }
++
++    return 0;
++}
++
++/* ---------- Parse one PS (Mem*) object ---------- */
++
++static int parse_ps_obj(struct js *j, struct st_ps *ps)
++{
++    if (js_expect(j, '{')) return -EINVAL;
++
++    while (1) {
++        if (js_maybe(j, '}')) break;
++
++        {
++            char key[32];
++            if (js_string(j, key, sizeof(key))) return -EINVAL;
++            if (js_expect(j, ':')) return -EINVAL;
++
++            if (!strcmp(key, "size")) {
++                unsigned int v;
++                if (js_number_u32(j, &v)) return -EINVAL;
++                ps->size = v;
++                pr_info("PS '%c%c%c%c': size=0x%08x\n",
++                        ps->name4[0], ps->name4[1], ps->name4[2], ps->name4[3], ps->size);
++            } else if (!strcmp(key, "properties")) {
++                char props[64];
++                if (js_string(j, props, sizeof(props))) return -EINVAL;
++                ps->properties = props_from_str(props);
++                pr_info("PS '%c%c%c%c': properties=0x%x\n",
++                        ps->name4[0], ps->name4[1], ps->name4[2], ps->name4[3], ps->properties);
++            } else if (!strcmp(key, "on-remove")) {
++                char ors[8];
++                unsigned short orv;
++                if (js_string(j, ors, sizeof(ors))) return -EINVAL;
++                if (onremove_from_str(ors, &orv)) return -EINVAL; /* only CLEAN/NONE */
++                ps->on_remove = orv;
++                pr_info("PS '%c%c%c%c': on-remove=%u\n",
++                        ps->name4[0], ps->name4[1], ps->name4[2], ps->name4[3], ps->on_remove);
++            } else if (!strcmp(key, "owner")) {
++                char owner[16];
++                if (js_string(j, owner, sizeof(owner))) return -EINVAL;
++                k_strscpy(ps->owner_name_tmp, owner, sizeof(ps->owner_name_tmp));
++                pr_info("PS '%c%c%c%c': owner=%s\n",
++                        ps->name4[0], ps->name4[1], ps->name4[2], ps->name4[3], ps->owner_name_tmp);
++            } else if (!strcmp(key, "mappings")) {
++                if (parse_mappings_dict(j, ps)) return -EINVAL;
++                pr_info("PS '%c%c%c%c': num-maps=%u\n",
++                        ps->name4[0], ps->name4[1], ps->name4[2], ps->name4[3], (unsigned)ps->num_maps);
++            } else {
++                return -EINVAL;
++            }
++        }
++
++        if (!js_maybe(j, ',')) {
++            if (js_expect(j, '}')) return -EINVAL;
++            break;
++        }
++    }
++
++    return 0;
++}
++
++/* ---------- Parse root object ---------- */
++
++static int parse_root(const char *json, size_t len, struct st_ctx *ctx)
++{
++    struct js j;
++    j.s = json; j.n = len; j.i = 0;
++
++    if (js_expect(&j, '{')) return -EINVAL;
++
++    while (1) {
++        if (js_maybe(&j, '}')) break;
++
++        {
++            char key[64];
++            if (js_string(&j, key, sizeof(key))) return -EINVAL;
++            if (js_expect(&j, ':')) return -EINVAL;
++
++            if (!strcmp(key, "Self")) {
++                char sname[32];
++                if (js_string(&j, sname, sizeof(sname))) return -EINVAL;
++                copy_name4(ctx->self_name4, sname);
++                pr_info("Self='%c%c%c%c'\n",
++                        ctx->self_name4[0], ctx->self_name4[1], ctx->self_name4[2], ctx->self_name4[3]);
++            } else if (looks_vm(key)) {
++                if (ctx->num_vms >= PARSER_MAX_VMS) return -ENOMEM;
++                {
++                    struct st_vm *vm = &ctx->vms[ctx->num_vms];
++                    memset(vm, 0, sizeof(*vm));
++                    copy_name4(vm->name4, key);
++                    if (parse_vm_obj(&j, vm)) return -EINVAL;
++                    pr_info("Added VM[%u] '%c%c%c%c'\n",
++                            (unsigned)ctx->num_vms, vm->name4[0], vm->name4[1], vm->name4[2], vm->name4[3]);
++                    ctx->num_vms++;
++                }
++            } else if (looks_mem(key)) {
++                if (ctx->num_ps >= PARSER_MAX_PS) return -ENOMEM;
++                {
++                    struct st_ps *ps = &ctx->ps[ctx->num_ps];
++                    memset(ps, 0, sizeof(*ps));
++                    copy_name4(ps->name4, key);
++                    if (parse_ps_obj(&j, ps)) return -EINVAL;
++                    pr_info("Added PS[%u] '%c%c%c%c'\n",
++                            (unsigned)ctx->num_ps, ps->name4[0], ps->name4[1], ps->name4[2], ps->name4[3]);
++                    ctx->num_ps++;
++                }
++            } else {
++                return -EINVAL;
++            }
++        }
++
++        if (!js_maybe(&j, ',')) {
++            if (js_expect(&j, '}')) return -EINVAL;
++            break;
++        }
++    }
++
++    return 0;
++}
++
++/* ---------- Resolve names to indices (Self, owner, mappings) ---------- */
++
++static int find_vm_index(const struct st_ctx *ctx, const char name4[4], unsigned short *idx_out)
++{
++    unsigned short i;
++    for (i = 0; i < ctx->num_vms; i++) {
++        if (!memcmp(ctx->vms[i].name4, name4, 4)) { *idx_out = i; return 0; }
++    }
++    return -ENOENT;
++}
++
++static int find_vm_index_by_cstr(const struct st_ctx *ctx, const char *name,
++                                 unsigned short *idx_out)
++{
++    char n4[4];
++    copy_name4(n4, name);
++    return find_vm_index(ctx, n4, idx_out);
++}
++
++static int resolve_indices(struct st_ctx *ctx)
++{
++    unsigned short pi, mi;
++
++    if (find_vm_index(ctx, ctx->self_name4, &ctx->self_vm_index)) {
++        pr_info("ERROR: 'Self' VM not found in VMs.\n");
++        return -EINVAL;
++    }
++    pr_info("Resolved Self index=%u\n", (unsigned)ctx->self_vm_index);
++
++    for (pi = 0; pi < ctx->num_ps; pi++) {
++        struct st_ps *ps = &ctx->ps[pi];
++
++        if (ps->owner_name_tmp[0]) {
++            if (find_vm_index_by_cstr(ctx, ps->owner_name_tmp, &ps->owner_vm_index)) {
++                pr_info("ERROR: owner '%s' not found for PS[%u]\n",
++                        ps->owner_name_tmp, (unsigned)pi);
++                return -EINVAL;
++            }
++        } else {
++            ps->owner_vm_index = 0xFFFF;
++        }
++
++        for (mi = 0; mi < ps->num_maps; mi++) {
++            struct st_map *m = &ps->maps[mi];
++            if (find_vm_index_by_cstr(ctx, m->vm_name_tmp, &m->vm_index)) {
++                pr_info("ERROR: mapping VM '%s' not found for PS[%u]\n",
++                        m->vm_name_tmp, (unsigned)pi);
++                return -EINVAL;
++            }
++        }
++    }
++
++    return 0;
++}
++
++/* ---------- Write helpers (little endian) ---------- */
++
++static void wr_u16(unsigned char *p, unsigned short v)
++{
++    p[0] = (unsigned char)(v & 0xFF);
++    p[1] = (unsigned char)((v >> 8) & 0xFF);
++}
++
++static void wr_u32(unsigned char *p, unsigned int v)
++{
++    p[0] = (unsigned char)(v & 0xFF);
++    p[1] = (unsigned char)((v >> 8) & 0xFF);
++    p[2] = (unsigned char)((v >> 16) & 0xFF);
++    p[3] = (unsigned char)((v >> 24) & 0xFF);
++}
++
++static void wr_u64(unsigned char *p, unsigned long long v)
++{
++    p[0] = (unsigned char)(v & 0xFF);
++    p[1] = (unsigned char)((v >> 8) & 0xFF);
++    p[2] = (unsigned char)((v >> 16) & 0xFF);
++    p[3] = (unsigned char)((v >> 24) & 0xFF);
++    p[4] = (unsigned char)((v >> 32) & 0xFF);
++    p[5] = (unsigned char)((v >> 40) & 0xFF);
++    p[6] = (unsigned char)((v >> 48) & 0xFF);
++    p[7] = (unsigned char)((v >> 56) & 0xFF);
++}
++
++static size_t size_of_payload(const struct st_ctx *c)
++{
++    size_t sz = 16; /* header */
++    unsigned short i;
++
++    sz += (size_t)c->num_vms * 12;
++    for (i = 0; i < c->num_ps; i++) {
++        const struct st_ps *ps = &c->ps[i];
++        sz += 12 /* base */ + 8 /* extended */;
++        sz += (size_t)ps->num_maps * 12;
++    }
++    return sz;
++}
++
++/* ---------- Public API ---------- */
++
++static int json_to_rmm_payload(const char *json, size_t json_len,
++                        unsigned char *out_buf, size_t out_cap,
++                        size_t *out_len)
++{
++    struct st_ctx *ctx;
++    unsigned char *p;
++    size_t need;
++    unsigned short i, mi;
++
++    if (!json || !out_buf || !out_len)
++        return -EINVAL;
++
++    ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
++    if (!ctx)
++        return -ENOMEM;
++
++    /* Parse JSON into staging ctx (same helpers as before) */
++    if (parse_root(json, json_len, ctx)) {
++        pr_info("JSON parse failed.\n");
++        kfree(ctx);
++        return -EINVAL;
++    }
++    if (resolve_indices(ctx)) {
++        kfree(ctx);
++        return -EINVAL;
++    }
++    for (i = 0; i < ctx->num_ps; i++)
++        if (ctx->ps[i].num_maps > PARSER_MAX_MAPS)
++            ctx->ps[i].num_maps = PARSER_MAX_MAPS;
++
++    /* Compute required size and check capacity */
++    need = size_of_payload(ctx);
++    *out_len = need;
++    if (need > out_cap) {
++        pr_info("PAYL needs %zu bytes, cap=%zu -> ENOSPC\n", need, out_cap);
++        kfree(ctx);
++        return -ENOSPC;
++    }
++
++    /* Write into caller-provided buffer */
++    p = out_buf;
++
++    /* Header (16 bytes) */
++    wr_u32(p + 0, PAYLOAD_MAGIC);
++    wr_u16(p + 4, 1); /* version */
++    wr_u16(p + 6, ctx->self_vm_index);
++    wr_u16(p + 8, ctx->num_vms);
++    wr_u16(p + 10, ctx->num_ps);
++    wr_u32(p + 12, 0); /* reserved */
++    pr_info("HDR: magic='PAYL' ver=1 self=%u vms=%u ps=%u\n",
++            (unsigned)ctx->self_vm_index, (unsigned)ctx->num_vms, (unsigned)ctx->num_ps);
++    p += 16;
++
++    /* VMs (12 bytes each) */
++    for (i = 0; i < ctx->num_vms; i++) {
++        const struct st_vm *v = &ctx->vms[i];
++        memcpy(p + 0, v->name4, 4);
++        wr_u32(p + 4, v->hash);
++        p[8]  = v->allowed_untrusted ? 1 : 0;
++        p[9]  = v->allowed_other_mappings ? 1 : 0;
++        p[10] = 0; p[11] = 0;
++        pr_info("VM[%u] '%c%c%c%c' hash=0x%08x untr=%u other=%u\n",
++                (unsigned)i, v->name4[0], v->name4[1], v->name4[2], v->name4[3],
++                v->hash, (unsigned)v->allowed_untrusted, (unsigned)v->allowed_other_mappings);
++        p += 12;
++    }
++
++    /* PS entries */
++    for (i = 0; i < ctx->num_ps; i++) {
++        const struct st_ps *ps = &ctx->ps[i];
++
++        memcpy(p + 0, ps->name4, 4);
++        wr_u32(p + 4, ps->size);
++        wr_u16(p + 8, ps->num_maps);
++        wr_u16(p + 10, 0); /* pad */
++        p += 12;
++
++        wr_u32(p + 0, ps->properties);
++        wr_u16(p + 4, ps->owner_vm_index);
++        wr_u16(p + 6, ps->on_remove);     /* CLEAN=1, NONE=0 */
++        p += 8;
++
++        pr_info("PS[%u] '%c%c%c%c' size=0x%08x props=0x%x owner=%u onrm=%u maps=%u\n",
++                (unsigned)i,
++                ps->name4[0], ps->name4[1], ps->name4[2], ps->name4[3],
++                ps->size, ps->properties, ps->owner_vm_index, ps->on_remove,
++                (unsigned)ps->num_maps);
++
++        for (mi = 0; mi < ps->num_maps; mi++) {
++            const struct st_map *m = &ps->maps[mi];
++            wr_u16(p + 0, m->vm_index);
++            wr_u16(p + 2, m->prot);
++            wr_u64(p + 4, m->gpa);
++            pr_info("  map[%u]: vm=%u gpa=0x%llx prot=%u\n",
++                    (unsigned)mi, m->vm_index, m->gpa, m->prot);
++            p += 12;
++        }
++    }
++
++    kfree(ctx);
++    return 0;
++}
++
++
+ // ---------------------------------------------------------------------
+ // module init: read JSON, build binary, copy into 1 page, tell RMM
+ // ---------------------------------------------------------------------
+@@ -347,7 +766,7 @@ static int __init rsi_policy_json_init(void)
+ 	unsigned long st;
+ 
+ 	if (!json) {
+-		pr_err("rsi_policy_json: failed to read '%s'\n", path);
++		pr_info("rsi_policy_json: failed to read '%s'\n", path);
+ 		return -ENOENT;
+ 	}
+ 
+@@ -357,11 +776,11 @@ static int __init rsi_policy_json_init(void)
+ 		return -ENOMEM;
+ 	}
+ 
+-	rc = build_binary_from_json(json, page, BIN_PAGE_SIZE, &bin_len);
++	rc = json_to_rmm_payload(json, json_len, page, BIN_PAGE_SIZE, &bin_len);
+ 	vfree(json);
+ 
+ 	if (rc) {
+-		pr_err("rsi_upload_policy: failed to build binary from json (rc=%d)\n", rc);
++		pr_info("rsi_upload_policy: failed to build binary from json (rc=%d)\n", rc);
+ 		free_page((unsigned long)page);
+ 		return rc;
+ 	}
+@@ -373,9 +792,12 @@ static int __init rsi_policy_json_init(void)
+ 	 */
+ 	ipa = virt_to_phys(page);
+ 
++	pr_info("rsi_upload_policy: calling RSI fid=0x%lx ipa=0x%lx len=%zu\n",
++        rsi_fid, ipa, bin_len);
++
+ 	st = rsi_upload_policy(ipa);
+ 	if (st) {
+-		pr_err("rsi_upload_policy: RSI failed: 0x%lx\n", st);
++		pr_info("rsi_upload_policy: RSI failed: 0x%lx\n", st);
+ 		free_page((unsigned long)page);
+ 		return -EFAULT;
+ 	}
+diff --git a/drivers/misc/rsi_uploader.c.old b/drivers/misc/rsi_uploader.c.old
+index 787e6b89e1b1..232b5072b937 100644
+--- a/drivers/misc/rsi_uploader.c.old
++++ b/drivers/misc/rsi_uploader.c.old
+@@ -1,42 +1,64 @@
+ // SPDX-License-Identifier: GPL-2.0
+-// rsi_uploader.c — Read policy file and call RSI per-line (Arm CCA Realm, arm64)
++//
++// rsi_policy_json.c
++// Read a fixed-shape JSON policy and tell the RMM where the resulting
++// binary buffer lives (IPA == page address)
++//
++// expected JSON:
++//
++// {
++//   "Self": "VM1",
++//   "VM1": { "hash": 0xffaaa1, "allowed-untrusted": false },
++//   "VM2": { "hash": 0xffaaa2, "allowed-untrusted": false },
++//   "PS12": {
++//     "size": 0x1000,
++//     "mappings": [
++//       "VM1": { "gpa": 0x4000, "prot": RW },
++//       "VM2": { "gpa": 0x7000, "prot": R  }
++//     ]
++//   }
++// }
++//
++// we turn that into the binary the RMM parser expects:
++//
++// u32 magic = 'PAYL'
++// u16 version = 1
++// u16 self_vm_index (0 for VM1, 1 for VM2, 0xffff for none)
++// u16 num_vms = 2
++// u16 num_ps  = 1
++// u16 reserved = 0
++// ---- VM1 rec (12B) ----
++// ---- VM2 rec (12B) ----
++// ---- PS12 + 2 mappings ----
++//
++// then we do SMC(RSI_PARSE_CONFIG, ipa)
+ 
+ #include <linux/module.h>
+ #include <linux/fs.h>
+ #include <linux/file.h>
+-#include <linux/slab.h>
+ #include <linux/vmalloc.h>
++#include <linux/slab.h>
+ #include <linux/mm.h>
+-#include <linux/ctype.h>
+-#include <linux/errno.h>
+ #include <linux/string.h>
++#include <linux/errno.h>
+ #include <linux/version.h>
+-#include <asm/rsi_cmds.h>
++#include <linux/uaccess.h>
++#include <asm/page.h>
++#include <asm/smp_plat.h>
++#include <asm/ptrace.h>
+ 
+-static char *path = "/etc/policy.txt";
++static char *path = "/etc/policy.json";
+ module_param(path, charp, 0644);
+-MODULE_PARM_DESC(path, "Policy file path (each line: ipa size local_acl target_realm target_acl)");
++MODULE_PARM_DESC(path, "Policy JSON file path");
+ 
+-/* Your RSI function ID that implements: rsi_upload_policy(ipa, size, local_acl, target_realm, target_acl) */
+-static unsigned long rsi_fid = 0xC40001B0;   /* <-- set to your real FID */
++static unsigned long rsi_fid = 0xC40002F0; /* your new RSI: x0=fid, x1=ipa */
+ module_param(rsi_fid, ulong, 0644);
+-MODULE_PARM_DESC(rsi_fid, "RSI SMC function ID for rsi_upload_policy");
++MODULE_PARM_DESC(rsi_fid, "RSI SMC function ID for rsi_parse_config");
+ 
+-static bool allow_commas = true;  /* accept commas and/or whitespace as separators */
+-module_param(allow_commas, bool, 0644);
+-MODULE_PARM_DESC(allow_commas, "Allow commas as separators in addition to whitespace");
+-
+-/* --- tiny helpers -------------------------------------------------------- */
+-
+-// static inline long rsi_upload_policy_smc(u64 ipa, u64 size, u32 local_acl, u64 target_realm, u32 target_acl)
+-// {
+-// 	struct arm_smccc_res res;
+-// 	/* ABI: a0=fid, a1=ipa, a2=size, a3=local_acl, a4=target_realm, a5=target_acl */
+-// 	arm_smccc_smc(rsi_fid, ipa, size, local_acl, target_realm, target_acl, 0, 0, &res);
+-// 	return (long)res.a0;
+-// }
+-
+-static char *dup_and_nul_terminate_file(const char *p, size_t *out_sz)
++// ---------------------------------------------------------------------
++// helpers to read the file into a NUL-terminated buffer
++// ---------------------------------------------------------------------
++static char *read_file_nul(const char *p, size_t *out_len)
+ {
+ 	struct file *filp;
+ 	loff_t pos = 0;
+@@ -49,7 +71,7 @@ static char *dup_and_nul_terminate_file(const char *p, size_t *out_sz)
+ 		return NULL;
+ 
+ 	isize = i_size_read(file_inode(filp));
+-	if (isize <= 0 || isize > (32ULL << 20)) { /* 32 MiB sanity cap */
++	if (isize <= 0 || isize > (1ULL << 20)) { /* 1 MiB cap */
+ 		filp_close(filp, NULL);
+ 		return NULL;
+ 	}
+@@ -63,7 +85,6 @@ static char *dup_and_nul_terminate_file(const char *p, size_t *out_sz)
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+ 	rd = kernel_read(filp, buf, isize, &pos);
+ #else
+-	/* Ancient kernels; if you actually need this, swap to set_fs+vfs_read */
+ 	rd = -ENOTSUPP;
+ #endif
+ 	filp_close(filp, NULL);
+@@ -73,167 +94,308 @@ static char *dup_and_nul_terminate_file(const char *p, size_t *out_sz)
+ 		return NULL;
+ 	}
+ 	buf[rd] = '\0';
+-	*out_sz = rd;
++	*out_len = rd;
+ 	return buf;
+ }
+ 
+-static inline bool is_line_comment(const char *s)
++// ---------------------------------------------------------------------
++// ultra-tiny JSON “parsing” helpers
++// these all assume the key exists and is unique
++// ---------------------------------------------------------------------
++static const char *find_key(const char *json, const char *key)
+ {
+-	/* skip leading spaces then check '#' or '//' */
+-	while (*s == ' ' || *s == '\t')
+-		++s;
+-	if (*s == '#')
+-		return true;
+-	if (s[0] == '/' && s[1] == '/')
+-		return true;
+-	return false;
++	/* we look for "key" literally */
++	char pat[32];
++	size_t k = strlen(key);
++
++	if (k + 2 >= sizeof(pat))
++		return NULL;
++
++	pat[0] = '"';
++	memcpy(pat + 1, key, k);
++	pat[1 + k] = '"';
++	pat[2 + k] = '\0';
++
++	return strstr(json, pat);
+ }
+ 
+-static int parse_u64(const char *tok, u64 *out)
++static int extract_string_after(const char *pos, char *out, size_t outlen)
+ {
+-	/* base=0 accepts 0x... (hex), 0... (octal), or decimal */
+-	return kstrtou64(tok, 0, out);
++	const char *colon, *q1, *q2;
++	colon = strchr(pos, ':');
++	if (!colon) return -EINVAL;
++	q1 = strchr(colon, '"');
++	if (!q1) return -EINVAL;
++	q2 = strchr(q1 + 1, '"');
++	if (!q2) return -EINVAL;
++	if ((size_t)(q2 - (q1 + 1)) >= outlen)
++		return -ENOSPC;
++	memcpy(out, q1 + 1, q2 - (q1 + 1));
++	out[q2 - (q1 + 1)] = '\0';
++	return 0;
+ }
+ 
+-static int parse_u32(const char *tok, u32 *out)
++static int extract_u32_after(const char *pos, u32 *out)
+ {
+-	unsigned int v;
+-	int r = kstrtouint(tok, 0, &v);
+-	if (r) return r;
+-	*out = v;
++	const char *colon = strchr(pos, ':');
++	char *endp;
++	unsigned long v;
++
++	if (!colon) return -EINVAL;
++	colon++;
++	while (*colon == ' ' || *colon == '\t')
++		colon++;
++
++	v = simple_strtoul(colon, &endp, 0);
++	*out = (u32)v;
+ 	return 0;
+ }
+-/* Split a line into exactly up to 5 tokens using whitespace and optional commas.
+- * Modifies the input line in place. Returns number of tokens [0..5].
+- */
+-static int split_fields(char *line, bool allow_commas, char *out[5])
++
++static int extract_u64_after(const char *pos, u64 *out)
+ {
+-	char *p = line;
+-	int n = 0;
+-
+-	/* Treat comma as delim if allowed; always treat space/tab as delims. */
+-	while (p && *p && n < 5) {
+-		char *tok, *next;
+-
+-		/* Skip leading delimiters */
+-		while (*p == ' ' || *p == '\t' || (allow_commas && *p == ','))
+-			p++;
+-		if (!*p)
+-			break;
+-
+-		/* Find end of token: stop at space, tab, or comma (if allowed) */
+-		tok = p;
+-		while (*p &&
+-		       *p != ' ' &&
+-		       *p != '\t' &&
+-		       !(allow_commas && *p == ','))
+-			p++;
+-
+-		/* Terminate token and advance past delimiter for next loop */
+-		if (*p) {
+-			*p = '\0';
+-			next = p + 1;
+-		} else {
+-			next = p;
+-		}
+-
+-		out[n++] = tok;
+-		p = next;
+-	}
++	const char *colon = strchr(pos, ':');
++	char *endp;
++	unsigned long long v;
++
++	if (!colon) return -EINVAL;
++	colon++;
++	while (*colon == ' ' || *colon == '\t')
++		colon++;
+ 
+-	return n;
++	v = simple_strtoull(colon, &endp, 0);
++	*out = (u64)v;
++	return 0;
+ }
+ 
+-/* --- core --------------------------------------------------------------- */
++static int extract_bool_after(const char *pos, u8 *out)
++{
++	const char *colon = strchr(pos, ':');
++	if (!colon) return -EINVAL;
++	colon++;
++	while (*colon == ' ' || *colon == '\t')
++		colon++;
++	if (strncmp(colon, "true", 4) == 0)
++		*out = 1;
++	else
++		*out = 0;
++	return 0;
++}
+ 
+-static int process_policy_buffer(char *buf)
++// ---------------------------------------------------------------------
++// build the RMM binary into a single page
++// layout matches the RMM-side parser we discussed
++// ---------------------------------------------------------------------
++#define PAYLOAD_MAGIC 0x5041594cU  /* 'PAYL' */
++#define BIN_PAGE_SIZE PAGE_SIZE
++
++static int build_binary_from_json(const char *json, u8 *out, size_t out_sz, size_t *used_sz)
+ {
+-	char *cursor = buf;
+-	int line_no = 0;
+-	int rc_total = 0;
+-
+-	while (cursor && *cursor) {
+-		char *line = strsep(&cursor, "\n");
+-		char *trim = line;
+-		line_no++;
+-
+-		/* trim leading spaces */
+-		while (*trim == ' ' || *trim == '\t')
+-			++trim;
+-		/* trim trailing spaces */
+-		{
+-			size_t L = strlen(trim);
+-			while (L > 0 && (trim[L-1] == ' ' || trim[L-1] == '\t' || trim[L-1] == '\r'))
+-				trim[--L] = '\0';
+-		}
+-		if (*trim == '\0' || is_line_comment(trim))
+-			continue; /* skip empty/comment */
+-
+-		char *fields[5] = {0};
+-		int nf = split_fields(trim, allow_commas, fields);
+-		if (nf != 5) {
+-			pr_err("rsi_uploader: line %d: expected 5 fields, got %d: '%s'\n", line_no, nf, trim);
+-			rc_total = -EINVAL;
+-			continue;
+-		}
+-
+-		u64 ipa, size, target_realm;
+-		u32 local_acl, target_acl;
+-
+-		if (parse_u64(fields[0], &ipa) ||
+-		    parse_u64(fields[1], &size) ||
+-		    parse_u32(fields[2], &local_acl) ||
+-		    parse_u64(fields[3], &target_realm) ||
+-		    parse_u32(fields[4], &target_acl)) {
+-			pr_err("rsi_uploader: line %d: parse error: '%s'\n", line_no, trim);
+-			rc_total = -EINVAL;
+-			continue;
+-		}
+-
+-		unsigned long st = rsi_upload_policy(ipa, size, local_acl, target_realm, target_acl);
+-		if (st < 0) {
+-			pr_err("rsi_uploader: line %d: RSI failed: ret=%ld (ipa=0x%llx size=%llu)\n",
+-			       line_no, st, (unsigned long long)ipa, (unsigned long long)size);
+-			rc_total = (int)st; /* keep last error */
+-		} else {
+-			pr_info("rsi_uploader: line %d: ok (ipa=0x%llx size=%llu local_acl=%u target_realm=0x%llx target_acl=%u)\n",
+-				line_no,
+-				(unsigned long long)ipa,
+-				(unsigned long long)size,
+-				local_acl,
+-				(unsigned long long)target_realm,
+-				target_acl);
+-		}
++	const char *self_pos, *vm1_pos, *vm2_pos, *ps_pos;
++	const char *vm1_hash_pos, *vm1_allow_pos;
++	const char *vm2_hash_pos, *vm2_allow_pos;
++	const char *ps_size_pos;
++	const char *map_vm1_pos, *map_vm2_pos;
++	const char *vm1_gpa_pos, *vm1_prot_pos;
++	const char *vm2_gpa_pos, *vm2_prot_pos;
++	u16 self_idx = 0xffff;
++	u32 vm1_hash, vm2_hash;
++	u8 vm1_allow, vm2_allow;
++	u32 ps_size;
++	u64 vm1_gpa, vm2_gpa;
++	u16 vm1_prot = 0, vm2_prot = 0;
++	u8 *p = out;
++
++	if (out_sz < 256)
++		return -ENOSPC;
++
++	self_pos = find_key(json, "Self");
++	vm1_pos  = find_key(json, "VM1");
++	vm2_pos  = find_key(json, "VM2");
++	ps_pos   = find_key(json, "PS12");
++	if (!self_pos || !vm1_pos || !vm2_pos || !ps_pos)
++		return -EINVAL;
++
++	/* Self */
++	{
++		char self_name[8];
++		if (extract_string_after(self_pos, self_name, sizeof(self_name)))
++			return -EINVAL;
++		if (!strcmp(self_name, "VM1"))
++			self_idx = 0;
++		else if (!strcmp(self_name, "VM2"))
++			self_idx = 1;
++		else
++			self_idx = 0xffff;
+ 	}
+-	return rc_total;
++
++	/* VM1 */
++	vm1_hash_pos  = strstr(vm1_pos, "hash");
++	vm1_allow_pos = strstr(vm1_pos, "allowed-untrusted");
++	if (!vm1_hash_pos || !vm1_allow_pos)
++		return -EINVAL;
++	extract_u32_after(vm1_hash_pos, &vm1_hash);
++	extract_bool_after(vm1_allow_pos, &vm1_allow);
++
++	/* VM2 */
++	vm2_hash_pos  = strstr(vm2_pos, "hash");
++	vm2_allow_pos = strstr(vm2_pos, "allowed-untrusted");
++	if (!vm2_hash_pos || !vm2_allow_pos)
++		return -EINVAL;
++	extract_u32_after(vm2_hash_pos, &vm2_hash);
++	extract_bool_after(vm2_allow_pos, &vm2_allow);
++
++	/* PS12 */
++	ps_size_pos = strstr(ps_pos, "size");
++	if (!ps_size_pos)
++		return -EINVAL;
++	extract_u32_after(ps_size_pos, &ps_size);
++
++	/* mappings: we know there are exactly 2, VM1 + VM2 */
++	map_vm1_pos = strstr(ps_pos, "\"VM1\"");
++	map_vm2_pos = strstr(ps_pos, "\"VM2\"");
++	if (!map_vm1_pos || !map_vm2_pos)
++		return -EINVAL;
++
++	vm1_gpa_pos  = strstr(map_vm1_pos, "gpa");
++	vm1_prot_pos = strstr(map_vm1_pos, "prot");
++	vm2_gpa_pos  = strstr(map_vm2_pos, "gpa");
++	vm2_prot_pos = strstr(map_vm2_pos, "prot");
++	if (!vm1_gpa_pos || !vm1_prot_pos || !vm2_gpa_pos || !vm2_prot_pos)
++		return -EINVAL;
++
++	extract_u64_after(vm1_gpa_pos, &vm1_gpa);
++	extract_u64_after(vm2_gpa_pos, &vm2_gpa);
++
++	if (strstr(vm1_prot_pos, "RW"))
++		vm1_prot = 3;
++	else if (strstr(vm1_prot_pos, "W"))
++		vm1_prot = 2;
++	else
++		vm1_prot = 1;
++
++	if (strstr(vm2_prot_pos, "RW"))
++		vm2_prot = 3;
++	else if (strstr(vm2_prot_pos, "W"))
++		vm2_prot = 2;
++	else
++		vm2_prot = 1;
++
++	/* ---- write binary ---- */
++
++	/* header: 16 bytes */
++	*(u32 *)(p + 0)  = PAYLOAD_MAGIC;
++	*(u16 *)(p + 4)  = 1;          /* version */
++	*(u16 *)(p + 6)  = self_idx;
++	*(u16 *)(p + 8)  = 2;          /* num_vms */
++	*(u16 *)(p +10)  = 1;          /* num_ps */
++	*(u16 *)(p +12)  = 0;
++	*(u16 *)(p +14)  = 0;
++	p += 16;
++
++	/* VM1 rec (12B) */
++	memcpy(p + 0, "VM1", 3); p[3] = '\0';
++	*(u32 *)(p + 4) = vm1_hash;
++	p[8]  = vm1_allow;
++	p[9]  = 0;
++	p[10] = 0;
++	p[11] = 0;
++	p += 12;
++
++	/* VM2 rec (12B) */
++	memcpy(p + 0, "VM2", 3); p[3] = '\0';
++	*(u32 *)(p + 4) = vm2_hash;
++	p[8]  = vm2_allow;
++	p[9]  = 0;
++	p[10] = 0;
++	p[11] = 0;
++	p += 12;
++
++	/* PS12 (12B header) */
++	memcpy(p + 0, "PS12", 4);
++	*(u32 *)(p + 4) = ps_size;
++	*(u16 *)(p + 8) = 2;  /* 2 mappings */
++	*(u16 *)(p +10) = 0;
++	p += 12;
++
++	/* mapping 0: VM1 */
++	*(u16 *)(p + 0) = 0;        /* vm index */
++	*(u16 *)(p + 2) = vm1_prot;
++	*(u64 *)(p + 4) = vm1_gpa;
++	p += 12;
++
++	/* mapping 1: VM2 */
++	*(u16 *)(p + 0) = 1;        /* vm index */
++	*(u16 *)(p + 2) = vm2_prot;
++	*(u64 *)(p + 4) = vm2_gpa;
++	p += 12;
++
++	*used_sz = p - out;
++	return 0;
+ }
+ 
+-int __init rsi_uploader_init(void)
++// ---------------------------------------------------------------------
++// module init: read JSON, build binary, copy into 1 page, tell RMM
++// ---------------------------------------------------------------------
++static int __init rsi_policy_json_init(void)
+ {
+-	size_t sz = 0;
+-	char *buf = dup_and_nul_terminate_file(path, &sz);
++	size_t json_len = 0;
++	char *json = read_file_nul(path, &json_len);
++	u8 *page;
++	size_t bin_len = 0;
+ 	int rc;
++	unsigned long ipa;
++	unsigned long st;
+ 
+-	if (!buf) {
+-		pr_err("rsi_uploader: failed to read '%s'\n", path);
++	if (!json) {
++		pr_err("rsi_policy_json: failed to read '%s'\n", path);
+ 		return -ENOENT;
+ 	}
+ 
+-	pr_info("rsi_uploader: processing '%s' (%zu bytes), fid=0x%lx\n", path, sz, rsi_fid);
+-	rc = process_policy_buffer(buf);
+-	vfree(buf);
++	page = (u8 *)__get_free_page(GFP_KERNEL | __GFP_ZERO);
++	if (!page) {
++		vfree(json);
++		return -ENOMEM;
++	}
++
++	rc = build_binary_from_json(json, page, BIN_PAGE_SIZE, &bin_len);
++	vfree(json);
+ 
+-	if (rc)
+-		pr_err("rsi_uploader: completed with errors (rc=%d)\n", rc);
+-	else
+-		pr_info("rsi_uploader: completed successfully\n");
+-	return rc;
++	if (rc) {
++		pr_err("rsi_upload_policy: failed to build binary from json (rc=%d)\n", rc);
++		free_page((unsigned long)page);
++		return rc;
++	}
++
++	/*
++	 * In a Realm you normally have IPA == kernel VA for your private
++	 * RAM window (identity-ish). If that’s the case, we can just pass
++	 * the page address as the IPA.
++	 */
++	ipa = virt_to_phys(page);
++
++	st = rsi_upload_policy(ipa);
++	if (st) {
++		pr_err("rsi_upload_policy: RSI failed: 0x%lx\n", st);
++		free_page((unsigned long)page);
++		return -EFAULT;
++	}
++
++	pr_info("rsi_upload_policy: sent config to RMM (ipa=0x%lx, bin_len=%zu)\n",
++		ipa, bin_len);
++
++	/* keep the page around if the RMM expects to read again; otherwise free it */
++	/* free_page((unsigned long)page); */
++
++	return 0;
+ }
+ 
+-static void __exit rsi_uploader_exit(void) { }
++static void __exit rsi_policy_json_exit(void)
++{
++	/* nothing */
++}
+ 
+ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("you");
+-MODULE_DESCRIPTION("Read policy file and invoke RSI rsi_upload_policy per line");
+-module_init(rsi_uploader_init);
+-module_exit(rsi_uploader_exit);
++MODULE_DESCRIPTION("Read fixed JSON and call RSI with IPA of binary");
++module_init(rsi_policy_json_init);
++module_exit(rsi_policy_json_exit);
+-- 
+2.34.1
+

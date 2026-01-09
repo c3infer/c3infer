@@ -1,0 +1,144 @@
+From 8865ad69184e57dc9eb3cf9859579a67408645d7 Mon Sep 17 00:00:00 2001
+From: Amir Al Sadi <alsadi.amir@gmail.com>
+Date: Fri, 26 Dec 2025 19:30:53 +0000
+Subject: [PATCH 18/18] adding inject RSI hook
+
+---
+ arch/arm64/configs/rsi_support_defconfig |  1 +
+ drivers/misc/Kconfig                     | 10 +++
+ drivers/misc/Makefile                    |  1 +
+ drivers/misc/inject_rsi.c                | 80 ++++++++++++++++++++++++
+ 4 files changed, 92 insertions(+)
+ create mode 100644 drivers/misc/inject_rsi.c
+
+diff --git a/arch/arm64/configs/rsi_support_defconfig b/arch/arm64/configs/rsi_support_defconfig
+index 03e71b658874..81cfd8110ff8 100644
+--- a/arch/arm64/configs/rsi_support_defconfig
++++ b/arch/arm64/configs/rsi_support_defconfig
+@@ -295,6 +295,7 @@ CONFIG_SRAM=y
+ CONFIG_PCI_ENDPOINT_TEST=m
+ CONFIG_RSI_UPLOADER=y
+ CONFIG_KVM_SPI_TEST=y
++CONFIG_INJECT_RSI=y
+ CONFIG_EEPROM_AT24=m
+ CONFIG_EEPROM_AT25=m
+ CONFIG_UACCE=m
+diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
+index 46eb04b8c572..7b2ea98e00c5 100644
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -653,6 +653,16 @@ config KVM_SPI_TEST
+ 	depends on ARM64 && OF
+ 	help
+ 	  Maps a GICv3 SPI INTID via irqdomain (no DT node) and prints when fired.
++config INJECT_RSI
++	tristate "Inject RSI faults for testing"
++	depends on ARM64 && OF && HAS_IOMEM
++	help
++	  This driver allows injecting faults into RSI operations for testing
++	  purposes. It creates a character device /dev/inject_rsi that can be
++	  used to configure the fault injection parameters.
++
++	  To compile this driver as a module, choose M here: the module
++	  will be called inject_rsi.
+ 
+ source "drivers/misc/c2port/Kconfig"
+ source "drivers/misc/eeprom/Kconfig"
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+index 3ca38e2b0612..d51422fbe2fa 100644
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -77,3 +77,4 @@ obj-y				+= keba/
+ obj-y				+= amd-sbi/
+ obj-$(CONFIG_RSI_UPLOADER) += rsi_uploader.o
+ obj-$(CONFIG_KVM_SPI_TEST) += kvm_spi_test.o
++obj-$(CONFIG_INJECT_RSI)   += inject_rsi.o
+diff --git a/drivers/misc/inject_rsi.c b/drivers/misc/inject_rsi.c
+new file mode 100644
+index 000000000000..4f815300af4e
+--- /dev/null
++++ b/drivers/misc/inject_rsi.c
+@@ -0,0 +1,80 @@
++#include <linux/module.h>
++#include <linux/miscdevice.h>
++#include <linux/fs.h>
++#include <linux/uaccess.h>
++#include <linux/capability.h>
++#include <linux/arm-smccc.h>
++
++/* fixed args */
++#define SET_RANGE_START ((phys_addr_t)0x0000000180000000ULL)
++#define SET_RANGE_END   ((phys_addr_t)0x0000000180100000ULL)
++
++static ssize_t set_range_write(struct file *f,
++			       const char __user *ubuf,
++			       size_t len, loff_t *ppos)
++{
++	char buf[16];
++	unsigned long cmd;
++	phys_addr_t top = 0;
++	long rc;
++
++	if (!capable(CAP_SYS_ADMIN))
++		return -EPERM;
++
++	if (len == 0)
++		return 0;
++	if (len >= sizeof(buf))
++		return -EINVAL;
++
++	if (copy_from_user(buf, ubuf, len))
++		return -EFAULT;
++	buf[len] = '\0';
++
++	if (kstrtoul(buf, 0, &cmd))
++		return -EINVAL;
++	if (cmd != 1)
++		return -EINVAL;
++
++	rc = rsi_set_memory_range_shared(SET_RANGE_START, SET_RANGE_END);
++
++	if (rc < 0) {
++		pr_info_ratelimited("set_range: RSI_IPA_STATE_SET failed rc=%ld top=%pa\n",
++				    rc, &top);
++		return rc;
++	}
++
++	pr_info_ratelimited("set_range: RSI_IPA_STATE_SET ok rc=%ld top=%pa\n",
++			    rc, &top);
++
++	return len;
++}
++
++static const struct file_operations set_range_fops = {
++	.owner = THIS_MODULE,
++	.write = set_range_write,
++};
++
++static struct miscdevice set_range_dev = {
++	.minor = MISC_DYNAMIC_MINOR,
++	.name  = "set_range",
++	.fops  = &set_range_fops,
++};
++
++static int __init inject_rsi_init(void)
++{
++	int ret = misc_register(&set_range_dev);
++	if (ret)
++		return ret;
++	pr_info("inject_rsi: registered /dev/%s\n", set_range_dev.name);
++	return 0;
++}
++
++static void __exit inject_rsi_exit(void)
++{
++	misc_deregister(&set_range_dev);
++}
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("Fixed RSI injection entry point");
++module_init(inject_rsi_init);
++module_exit(inject_rsi_exit);
+-- 
+2.34.1
+

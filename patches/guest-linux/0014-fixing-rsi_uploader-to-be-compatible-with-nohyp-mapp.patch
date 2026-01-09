@@ -1,0 +1,247 @@
+From c1bd3390b29758c85f26d31da74b9d46b21ea348 Mon Sep 17 00:00:00 2001
+From: Amir Al Sadi <alsadi.amir@gmail.com>
+Date: Mon, 1 Dec 2025 11:05:49 +0000
+Subject: [PATCH 14/18] fixing rsi_uploader to be compatible with nohyp
+ mappings
+
+---
+ drivers/misc/rsi_uploader.c | 176 +++++++++++++++++++++++++++++-------
+ 1 file changed, 143 insertions(+), 33 deletions(-)
+
+diff --git a/drivers/misc/rsi_uploader.c b/drivers/misc/rsi_uploader.c
+index c1b0acd9c816..ddaafa059342 100644
+--- a/drivers/misc/rsi_uploader.c
++++ b/drivers/misc/rsi_uploader.c
+@@ -19,6 +19,7 @@
+ #include <asm/smp_plat.h>
+ #include <asm/ptrace.h>
+ #include <linux/rmm_payload.h>
++#include <linux/miscdevice.h>
+ 
+ 
+ static char *path = "/etc/policy.json";
+@@ -1202,23 +1203,33 @@ int rmm_payload_to_json(const unsigned char *buf, size_t len,
+ 
+ EXPORT_SYMBOL_GPL(rmm_payload_to_json);
+ 
+-// ---------------------------------------------------------------------
+-// module init: read JSON, build binary, copy into 1 page, tell RMM
+-// ---------------------------------------------------------------------
+-static int __init rsi_policy_json_init(void)
++#define JSON_MAX_SIZE (1ULL << 20)  /* keep your 1 MiB cap */
++
++static ssize_t rsi_policy_write(struct file *file,
++                                const char __user *ubuf,
++                                size_t len, loff_t *ppos)
+ {
+-	size_t json_len = 0;
+-	char *json = read_file_nul(path, &json_len);
+-	u8 *page;
++	char *json = NULL;
++	u8 *page = NULL;
+ 	size_t bin_len = 0;
+ 	int rc;
+ 	unsigned long ipa;
+ 	unsigned long st;
+ 
+-	if (!json) {
+-		pr_info("rsi_policy_json: failed to read '%s'\n", path);
+-		return -ENOENT;
++	if (len == 0)
++		return 0;
++	if (len > JSON_MAX_SIZE)
++		return -EINVAL;
++
++	json = vmalloc(len + 1);
++	if (!json)
++		return -ENOMEM;
++
++	if (copy_from_user(json, ubuf, len)) {
++		vfree(json);
++		return -EFAULT;
+ 	}
++	json[len] = '\0';
+ 
+ 	page = (u8 *)__get_free_page(GFP_KERNEL | __GFP_ZERO);
+ 	if (!page) {
+@@ -1226,7 +1237,7 @@ static int __init rsi_policy_json_init(void)
+ 		return -ENOMEM;
+ 	}
+ 
+-	rc = json_to_rmm_payload(json, json_len, page, BIN_PAGE_SIZE, &bin_len);
++	rc = json_to_rmm_payload(json, len, page, BIN_PAGE_SIZE, &bin_len);
+ 	vfree(json);
+ 
+ 	if (rc) {
+@@ -1235,26 +1246,22 @@ static int __init rsi_policy_json_init(void)
+ 		return rc;
+ 	}
+ 
+-    char *dbg_json = vmalloc(PAGE_SIZE);
+-    if (dbg_json) {
+-        int rc2 = rmm_payload_to_json(page, bin_len, dbg_json, PAGE_SIZE);
+-        if (!rc2)
+-            pr_info("rmm_payload_to_json (round-trip):\n%s\n", dbg_json);
+-        else
+-            pr_info("rmm_payload_to_json failed: %d\n", rc2);
+-        vfree(dbg_json);
+-    }
+-    
++	/* Optional debug round-trip */
++	{
++		char *dbg_json = vmalloc(PAGE_SIZE);
++		if (dbg_json) {
++			int rc2 = rmm_payload_to_json(page, bin_len, dbg_json, PAGE_SIZE);
++			if (!rc2)
++				pr_info("rmm_payload_to_json (round-trip):\n%s\n", dbg_json);
++			else
++				pr_info("rmm_payload_to_json failed: %d\n", rc2);
++			vfree(dbg_json);
++		}
++	}
+ 
+-	/*
+-	 * In a Realm you normally have IPA == kernel VA for your private
+-	 * RAM window (identity-ish). If that’s the case, we can just pass
+-	 * the page address as the IPA.
+-	 */
+ 	ipa = virt_to_phys(page);
+-
+ 	pr_info("rsi_upload_policy: calling RSI fid=0x%lx ipa=0x%lx len=%zu\n",
+-        rsi_fid, ipa, bin_len);
++		rsi_fid, ipa, bin_len);
+ 
+ 	st = rsi_upload_policy(ipa);
+ 	if (st) {
+@@ -1263,20 +1270,123 @@ static int __init rsi_policy_json_init(void)
+ 		return -EFAULT;
+ 	}
+ 
+-	pr_info("rsi_upload_policy: sent config to RMM (ipa=0x%lx, bin_len=%zu)\n",
+-		ipa, bin_len);
++	// pr_info("rsi_upload_policy: sent config to RMM (ipa=0x%lx, bin_len=%zu)\n",
++	// 	ipa, bin_len);
++
++	/* Keep the page around like before if the RMM may reuse it.
++	 * (Same semantics as original code: we don't free_page() here.)
++	 */
++
++	return len;
++}
++
++static const struct file_operations rsi_policy_fops = {
++	.owner = THIS_MODULE,
++	.write = rsi_policy_write,
++};
++
++static struct miscdevice rsi_policy_dev = {
++	.minor = MISC_DYNAMIC_MINOR,
++	.name  = "rsi_policy_json",
++	.fops  = &rsi_policy_fops,
++};
++
++
++// ---------------------------------------------------------------------
++// module init: read JSON, build binary, copy into 1 page, tell RMM
++// ---------------------------------------------------------------------
++// static int __init rsi_policy_json_init(void)
++// {
++// 	size_t json_len = 0;
++// 	char *json = read_file_nul(path, &json_len);
++// 	u8 *page;
++// 	size_t bin_len = 0;
++// 	int rc;
++// 	unsigned long ipa;
++// 	unsigned long st;
++
++// 	if (!json) {
++// 		pr_info("rsi_policy_json: failed to read '%s'\n", path);
++// 		return -ENOENT;
++// 	}
++
++// 	page = (u8 *)__get_free_page(GFP_KERNEL | __GFP_ZERO);
++// 	if (!page) {
++// 		vfree(json);
++// 		return -ENOMEM;
++// 	}
++
++// 	rc = json_to_rmm_payload(json, json_len, page, BIN_PAGE_SIZE, &bin_len);
++// 	vfree(json);
++
++// 	if (rc) {
++// 		pr_info("rsi_upload_policy: failed to build binary from json (rc=%d)\n", rc);
++// 		free_page((unsigned long)page);
++// 		return rc;
++// 	}
++
++//     char *dbg_json = vmalloc(PAGE_SIZE);
++//     if (dbg_json) {
++//         int rc2 = rmm_payload_to_json(page, bin_len, dbg_json, PAGE_SIZE);
++//         if (!rc2)
++//             pr_info("rmm_payload_to_json (round-trip):\n%s\n", dbg_json);
++//         else
++//             pr_info("rmm_payload_to_json failed: %d\n", rc2);
++//         vfree(dbg_json);
++//     }
++    
++
++// 	/*
++// 	 * In a Realm you normally have IPA == kernel VA for your private
++// 	 * RAM window (identity-ish). If that’s the case, we can just pass
++// 	 * the page address as the IPA.
++// 	 */
++// 	ipa = virt_to_phys(page);
++
++// 	pr_info("rsi_upload_policy: calling RSI fid=0x%lx ipa=0x%lx len=%zu\n",
++//         rsi_fid, ipa, bin_len);
+ 
+-	/* keep the page around if the RMM expects to read again; otherwise free it */
+-	/* free_page((unsigned long)page); */
++// 	st = rsi_upload_policy(ipa);
++// 	if (st) {
++// 		pr_info("rsi_upload_policy: RSI failed: 0x%lx\n", st);
++// 		free_page((unsigned long)page);
++// 		return -EFAULT;
++// 	}
+ 
++// 	pr_info("rsi_upload_policy: sent config to RMM (ipa=0x%lx, bin_len=%zu)\n",
++// 		ipa, bin_len);
++
++// 	/* keep the page around if the RMM expects to read again; otherwise free it */
++// 	/* free_page((unsigned long)page); */
++
++// 	return 0;
++// }
++
++// static void __exit rsi_policy_json_exit(void)
++// {
++// 	/* nothing */
++// }
++
++static int __init rsi_policy_json_init(void)
++{
++	int ret;
++
++	ret = misc_register(&rsi_policy_dev);
++	if (ret) {
++		pr_info("rsi_policy_json: failed to register misc device (%d)\n", ret);
++		return ret;
++	}
++
++	pr_info("rsi_policy_json: registered /dev/%s\n", rsi_policy_dev.name);
+ 	return 0;
+ }
+ 
+ static void __exit rsi_policy_json_exit(void)
+ {
+-	/* nothing */
++	misc_deregister(&rsi_policy_dev);
+ }
+ 
++
+ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("you");
+ MODULE_DESCRIPTION("Read fixed JSON and call RSI with IPA of binary");
+-- 
+2.34.1
+

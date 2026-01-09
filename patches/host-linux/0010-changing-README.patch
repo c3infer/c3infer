@@ -1,0 +1,29 @@
+From a1e758ef809e26f08f8286520a04d0e5aeac70f4 Mon Sep 17 00:00:00 2001
+From: Amir Al Sadi <alsadi.amir@gmail.com>
+Date: Thu, 6 Nov 2025 10:58:45 +0000
+Subject: [PATCH 10/14] changing README
+
+---
+ README | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/README b/README
+index fd903645e6de..b34292c62f53 100644
+--- a/README
++++ b/README
+@@ -16,3 +16,11 @@ several of them using the reStructuredText markup notation.
+ Please read the Documentation/process/changes.rst file, as it contains the
+ requirements for building and running the kernel, and information about
+ the problems which may result by upgrading your kernel.
++
++How to compile:
++```bash
++make CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 defconfig
++scripts/config -e VIRT_DRIVERS -e ARM_CCA_GUEST -e CONFIG_HZ_100 \
++ -d CONFIG_HZ_250 -e CONFIG_MACVLAN -e CONFIG_MACVTAP
++make CROSS_COMPILE=aarch64-linux-gnu- ARCH=arm64 -j8 Image
++```
+\ No newline at end of file
+-- 
+2.34.1
+

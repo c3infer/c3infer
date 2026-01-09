@@ -1,0 +1,349 @@
+From 5fd2e387473a9b0d35954d8cefe48bb383e7111f Mon Sep 17 00:00:00 2001
+From: Amir Al Sadi <alsadi.amir@gmail.com>
+Date: Thu, 30 Oct 2025 13:44:15 +0000
+Subject: [PATCH 06/18] adding RSI for policy
+
+---
+ arch/arm64/include/asm/rsi_cmds.h |   5 +-
+ arch/arm64/include/asm/rsi_smc.h  |   2 +-
+ arch/arm64/kernel/rsi.c           |   6 +-
+ drivers/misc/Kconfig              |   5 +
+ drivers/misc/Makefile             |   1 +
+ drivers/misc/ibmasm/Makefile      |   1 -
+ drivers/misc/rsi_uploader.c       | 239 ++++++++++++++++++++++++++++++
+ 7 files changed, 253 insertions(+), 6 deletions(-)
+ create mode 100644 drivers/misc/rsi_uploader.c
+
+diff --git a/arch/arm64/include/asm/rsi_cmds.h b/arch/arm64/include/asm/rsi_cmds.h
+index cc3636a1b4f6..4d362c7d6506 100644
+--- a/arch/arm64/include/asm/rsi_cmds.h
++++ b/arch/arm64/include/asm/rsi_cmds.h
+@@ -49,11 +49,12 @@ static inline unsigned long rsi_request_version(unsigned long req,
+ 	return res.a0;
+ }
+ 
+-static inline unsigned long rsi_custom_print(unsigned long req)
++static inline unsigned long rsi_upload_policy(phys_addr_t ipa, unsigned long size, 
++											  unsigned int local_acl, unsigned long target_realm, unsigned int target_acl)
+ {
+ 	struct arm_smccc_res res;
+ 
+-	arm_smccc_smc(SMC_RSI_CUSTOM_PRINT, req, 0, 0, 0, 0, 0, 0, &res);
++	arm_smccc_smc(SMC_RSI_UPLOAD_POLICY, ipa, size, local_acl, target_realm, target_acl, 0, 0, &res);
+ 	return res.a0;
+ }
+ 
+diff --git a/arch/arm64/include/asm/rsi_smc.h b/arch/arm64/include/asm/rsi_smc.h
+index 7e4da43c5d46..2a3dca793eab 100644
+--- a/arch/arm64/include/asm/rsi_smc.h
++++ b/arch/arm64/include/asm/rsi_smc.h
+@@ -195,7 +195,7 @@ struct realm_config {
+  *
+  * ret0 == Status / error
+  */
+-#define SMC_RSI_CUSTOM_PRINT                     SMC_RSI_FID(0x1B0)
++#define SMC_RSI_UPLOAD_POLICY                     SMC_RSI_FID(0x1B0)
+ 
+ 
+ #endif /* __ASM_RSI_SMC_H_ */
+diff --git a/arch/arm64/kernel/rsi.c b/arch/arm64/kernel/rsi.c
+index c8d7726736b1..9b33f2faac45 100644
+--- a/arch/arm64/kernel/rsi.c
++++ b/arch/arm64/kernel/rsi.c
+@@ -126,10 +126,12 @@ void __init arm64_rsi_init(void)
+ 		return;
+ 	if (!rsi_version_matches())
+ 		return;
+-	if (rsi_custom_print(1) != RSI_SUCCESS) //custom print
+-		return;
++	// if (rsi_custom_print(1) != RSI_SUCCESS) //custom print
++	// 	return;
+ 	if (WARN_ON(rsi_get_realm_config(&config)))
+ 		return;
++	// if (rsi_uploader_init() != 0) //upload policy
++	// 	return;
+ 	prot_ns_shared = BIT(config.ipa_bits - 1);
+ 
+ 	if (arm64_ioremap_prot_hook_register(realm_ioremap_hook))
+diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
+index b9ca56930003..931bded588e9 100644
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -643,6 +643,11 @@ config MCHP_LAN966X_PCI
+ 	    - lan966x-serdes (PHY_LAN966X_SERDES)
+ 	    - lan966x-miim (MDIO_MSCC_MIIM)
+ 	    - lan966x-switch (LAN966X_SWITCH)
++config RSI_UPLOADER
++    bool "RSI policy uploader (reads file, calls RSI)"
++    depends on ARM64
++    help
++      Reads a policy file and calls rsi_upload_policy() for each line.
+ 
+ source "drivers/misc/c2port/Kconfig"
+ source "drivers/misc/eeprom/Kconfig"
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+index 917b9a7183aa..f03b2b5f73e4 100644
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -75,3 +75,4 @@ lan966x-pci-objs		+= lan966x_pci.dtbo.o
+ obj-$(CONFIG_MCHP_LAN966X_PCI)	+= lan966x-pci.o
+ obj-y				+= keba/
+ obj-y				+= amd-sbi/
++obj-$(CONFIG_RSI_UPLOADER) += rsi_uploader.o
+diff --git a/drivers/misc/ibmasm/Makefile b/drivers/misc/ibmasm/Makefile
+index 1b9dd0f44411..c66912e9a6c6 100644
+--- a/drivers/misc/ibmasm/Makefile
++++ b/drivers/misc/ibmasm/Makefile
+@@ -13,4 +13,3 @@ ibmasm-y :=	module.o      \
+ 		lowlevel.o
+ 
+ ibmasm-$(CONFIG_SERIAL_8250) += uart.o
+-
+diff --git a/drivers/misc/rsi_uploader.c b/drivers/misc/rsi_uploader.c
+new file mode 100644
+index 000000000000..787e6b89e1b1
+--- /dev/null
++++ b/drivers/misc/rsi_uploader.c
+@@ -0,0 +1,239 @@
++// SPDX-License-Identifier: GPL-2.0
++// rsi_uploader.c — Read policy file and call RSI per-line (Arm CCA Realm, arm64)
++
++#include <linux/module.h>
++#include <linux/fs.h>
++#include <linux/file.h>
++#include <linux/slab.h>
++#include <linux/vmalloc.h>
++#include <linux/mm.h>
++#include <linux/ctype.h>
++#include <linux/errno.h>
++#include <linux/string.h>
++#include <linux/version.h>
++#include <asm/rsi_cmds.h>
++
++static char *path = "/etc/policy.txt";
++module_param(path, charp, 0644);
++MODULE_PARM_DESC(path, "Policy file path (each line: ipa size local_acl target_realm target_acl)");
++
++/* Your RSI function ID that implements: rsi_upload_policy(ipa, size, local_acl, target_realm, target_acl) */
++static unsigned long rsi_fid = 0xC40001B0;   /* <-- set to your real FID */
++module_param(rsi_fid, ulong, 0644);
++MODULE_PARM_DESC(rsi_fid, "RSI SMC function ID for rsi_upload_policy");
++
++static bool allow_commas = true;  /* accept commas and/or whitespace as separators */
++module_param(allow_commas, bool, 0644);
++MODULE_PARM_DESC(allow_commas, "Allow commas as separators in addition to whitespace");
++
++/* --- tiny helpers -------------------------------------------------------- */
++
++// static inline long rsi_upload_policy_smc(u64 ipa, u64 size, u32 local_acl, u64 target_realm, u32 target_acl)
++// {
++// 	struct arm_smccc_res res;
++// 	/* ABI: a0=fid, a1=ipa, a2=size, a3=local_acl, a4=target_realm, a5=target_acl */
++// 	arm_smccc_smc(rsi_fid, ipa, size, local_acl, target_realm, target_acl, 0, 0, &res);
++// 	return (long)res.a0;
++// }
++
++static char *dup_and_nul_terminate_file(const char *p, size_t *out_sz)
++{
++	struct file *filp;
++	loff_t pos = 0;
++	ssize_t rd;
++	loff_t isize;
++	char *buf;
++
++	filp = filp_open(p, O_RDONLY, 0);
++	if (IS_ERR(filp))
++		return NULL;
++
++	isize = i_size_read(file_inode(filp));
++	if (isize <= 0 || isize > (32ULL << 20)) { /* 32 MiB sanity cap */
++		filp_close(filp, NULL);
++		return NULL;
++	}
++
++	buf = vmalloc(isize + 1);
++	if (!buf) {
++		filp_close(filp, NULL);
++		return NULL;
++	}
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
++	rd = kernel_read(filp, buf, isize, &pos);
++#else
++	/* Ancient kernels; if you actually need this, swap to set_fs+vfs_read */
++	rd = -ENOTSUPP;
++#endif
++	filp_close(filp, NULL);
++
++	if (rd < 0) {
++		vfree(buf);
++		return NULL;
++	}
++	buf[rd] = '\0';
++	*out_sz = rd;
++	return buf;
++}
++
++static inline bool is_line_comment(const char *s)
++{
++	/* skip leading spaces then check '#' or '//' */
++	while (*s == ' ' || *s == '\t')
++		++s;
++	if (*s == '#')
++		return true;
++	if (s[0] == '/' && s[1] == '/')
++		return true;
++	return false;
++}
++
++static int parse_u64(const char *tok, u64 *out)
++{
++	/* base=0 accepts 0x... (hex), 0... (octal), or decimal */
++	return kstrtou64(tok, 0, out);
++}
++
++static int parse_u32(const char *tok, u32 *out)
++{
++	unsigned int v;
++	int r = kstrtouint(tok, 0, &v);
++	if (r) return r;
++	*out = v;
++	return 0;
++}
++/* Split a line into exactly up to 5 tokens using whitespace and optional commas.
++ * Modifies the input line in place. Returns number of tokens [0..5].
++ */
++static int split_fields(char *line, bool allow_commas, char *out[5])
++{
++	char *p = line;
++	int n = 0;
++
++	/* Treat comma as delim if allowed; always treat space/tab as delims. */
++	while (p && *p && n < 5) {
++		char *tok, *next;
++
++		/* Skip leading delimiters */
++		while (*p == ' ' || *p == '\t' || (allow_commas && *p == ','))
++			p++;
++		if (!*p)
++			break;
++
++		/* Find end of token: stop at space, tab, or comma (if allowed) */
++		tok = p;
++		while (*p &&
++		       *p != ' ' &&
++		       *p != '\t' &&
++		       !(allow_commas && *p == ','))
++			p++;
++
++		/* Terminate token and advance past delimiter for next loop */
++		if (*p) {
++			*p = '\0';
++			next = p + 1;
++		} else {
++			next = p;
++		}
++
++		out[n++] = tok;
++		p = next;
++	}
++
++	return n;
++}
++
++/* --- core --------------------------------------------------------------- */
++
++static int process_policy_buffer(char *buf)
++{
++	char *cursor = buf;
++	int line_no = 0;
++	int rc_total = 0;
++
++	while (cursor && *cursor) {
++		char *line = strsep(&cursor, "\n");
++		char *trim = line;
++		line_no++;
++
++		/* trim leading spaces */
++		while (*trim == ' ' || *trim == '\t')
++			++trim;
++		/* trim trailing spaces */
++		{
++			size_t L = strlen(trim);
++			while (L > 0 && (trim[L-1] == ' ' || trim[L-1] == '\t' || trim[L-1] == '\r'))
++				trim[--L] = '\0';
++		}
++		if (*trim == '\0' || is_line_comment(trim))
++			continue; /* skip empty/comment */
++
++		char *fields[5] = {0};
++		int nf = split_fields(trim, allow_commas, fields);
++		if (nf != 5) {
++			pr_err("rsi_uploader: line %d: expected 5 fields, got %d: '%s'\n", line_no, nf, trim);
++			rc_total = -EINVAL;
++			continue;
++		}
++
++		u64 ipa, size, target_realm;
++		u32 local_acl, target_acl;
++
++		if (parse_u64(fields[0], &ipa) ||
++		    parse_u64(fields[1], &size) ||
++		    parse_u32(fields[2], &local_acl) ||
++		    parse_u64(fields[3], &target_realm) ||
++		    parse_u32(fields[4], &target_acl)) {
++			pr_err("rsi_uploader: line %d: parse error: '%s'\n", line_no, trim);
++			rc_total = -EINVAL;
++			continue;
++		}
++
++		unsigned long st = rsi_upload_policy(ipa, size, local_acl, target_realm, target_acl);
++		if (st < 0) {
++			pr_err("rsi_uploader: line %d: RSI failed: ret=%ld (ipa=0x%llx size=%llu)\n",
++			       line_no, st, (unsigned long long)ipa, (unsigned long long)size);
++			rc_total = (int)st; /* keep last error */
++		} else {
++			pr_info("rsi_uploader: line %d: ok (ipa=0x%llx size=%llu local_acl=%u target_realm=0x%llx target_acl=%u)\n",
++				line_no,
++				(unsigned long long)ipa,
++				(unsigned long long)size,
++				local_acl,
++				(unsigned long long)target_realm,
++				target_acl);
++		}
++	}
++	return rc_total;
++}
++
++int __init rsi_uploader_init(void)
++{
++	size_t sz = 0;
++	char *buf = dup_and_nul_terminate_file(path, &sz);
++	int rc;
++
++	if (!buf) {
++		pr_err("rsi_uploader: failed to read '%s'\n", path);
++		return -ENOENT;
++	}
++
++	pr_info("rsi_uploader: processing '%s' (%zu bytes), fid=0x%lx\n", path, sz, rsi_fid);
++	rc = process_policy_buffer(buf);
++	vfree(buf);
++
++	if (rc)
++		pr_err("rsi_uploader: completed with errors (rc=%d)\n", rc);
++	else
++		pr_info("rsi_uploader: completed successfully\n");
++	return rc;
++}
++
++static void __exit rsi_uploader_exit(void) { }
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("you");
++MODULE_DESCRIPTION("Read policy file and invoke RSI rsi_upload_policy per line");
++module_init(rsi_uploader_init);
++module_exit(rsi_uploader_exit);
+-- 
+2.34.1
+

@@ -9,7 +9,7 @@ mkdir c3infer
 cd c3infer
 repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git
 repo sync -j8 --no-clone-bundle
-repo sync cca_patches
+./apply_patches.sh
 cd build
 make -j8 toolchains
 make -j8

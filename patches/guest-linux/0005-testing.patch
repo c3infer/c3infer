@@ -1,0 +1,25 @@
+From a2b4e5d0bb520c7fe4cbdf957ff0c6d47f7a7610 Mon Sep 17 00:00:00 2001
+From: Amir Al Sadi <alsadi.amir@gmail.com>
+Date: Tue, 21 Oct 2025 15:34:16 +0100
+Subject: [PATCH 05/18] testing
+
+---
+ arch/arm64/kernel/rsi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/kernel/rsi.c b/arch/arm64/kernel/rsi.c
+index 57160ea84ee1..c8d7726736b1 100644
+--- a/arch/arm64/kernel/rsi.c
++++ b/arch/arm64/kernel/rsi.c
+@@ -126,7 +126,7 @@ void __init arm64_rsi_init(void)
+ 		return;
+ 	if (!rsi_version_matches())
+ 		return;
+-	if (rsi_custom_print(1) != RSI_SUCCESS)
++	if (rsi_custom_print(1) != RSI_SUCCESS) //custom print
+ 		return;
+ 	if (WARN_ON(rsi_get_realm_config(&config)))
+ 		return;
+-- 
+2.34.1
+
