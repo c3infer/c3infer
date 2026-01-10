@@ -24,7 +24,7 @@ a) Start ptys:
 ./start_cca_multiregion_pty.sh
 ```
 
-b) Open a new concole in tmux with `ctrl+b + c`
+b) Open a new console in tmux with `ctrl+b + c`
 
 c) Run Qemu:
 ```
