@@ -11,7 +11,7 @@ sudo apt install tmux screen
 mkdir c3infer
 cd c3infer
 repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git
-repo sync -j8 --no-clone-bundle
+repo sync -j16 --no-clone-bundle
 ./cca_patches/apply_patches.sh
 cd build
 make -j16 toolchains
@@ -33,4 +33,4 @@ make run-only-multiregion
 d) Open `host` concole and log into NW userspace with `root` username. You can move between tmux consoles with `ctrl+b + n` or `ctrl+b + p`
 
 ## 4 Boot realms for use cases
-For reproducing each use case, please follow the guidance provided at [use cases](https://gitlab.doc.ic.ac.uk/c3infer/cca_patches/-/tree/master/usecases?ref_type=heads) page.
+For reproducing each use case, please continue the steps above in the guidance provided at [use cases](https://gitlab.doc.ic.ac.uk/c3infer/cca_patches/-/tree/master/usecases?ref_type=heads) page.
