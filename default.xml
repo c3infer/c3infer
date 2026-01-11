@@ -29,8 +29,6 @@
     <copyfile src="usecases/usecase1.sh" dest="out/bin/usecase1.sh"/>
     <copyfile src="usecases/usecase2.sh" dest="out/bin/usecase2.sh"/>
     <copyfile src="usecases/usecase3.sh" dest="out/bin/usecase3.sh"/>
-    <copyfile src="usecases/usecase1_Auto.sh" dest="out/bin/usecase1_Auto.sh"/>
-    <copyfile src="usecases/usecase2_Auto.sh" dest="out/bin/usecase2_Auto.sh"/>
 
   </project>
   <project name="cloud-hypervisor" remote="clo" revision="cca/v3"/>
@@ -38,7 +36,7 @@
   <project name="git-http/xen.git" path="xen" remote="xenbits" revision="refs/tags/RELEASE-4.18.0" clone-depth="1"/>
   <project name="hafnium/hafnium.git" path="hafnium" remote="tfo" revision="refs/tags/v2.10" clone-depth="1"/>
   <project name="linaro-swg/optee_examples.git" path="optee_examples" revision="refs/tags/4.2.0" clone-depth="1"/>
-  <project name="linux-arm/linux-cca.git" path="linux" remote="linux" revision="refs/tags/cca-full-rfc-v1"/>
+  <project name="linux-arm/linux-cca.git" path="linux" remote="linux" revision="master"/>
   <project name="op-tee-4.2.0/build.git" path="build" remote="clo" revision="cca/v8" />
   <project name="qemu/qemu.git" path="qemu" revision="stable-9.2"/>
   <project name="rmm-private" path="rmm" remote="rmm-priv" revision="cca/v8" groups="local::patches" clone-depth="1"/>

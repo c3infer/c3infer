@@ -225,7 +225,6 @@ endif
 ifeq ($(MEMTAG),y)
 TF_A_FLAGS += CTX_INCLUDE_MTE_REGS=1
 endif
-
 arm-tf: $(BL32_DEPS) $(BL33_DEPS) rmm
 	$(TF_A_EXPORTS) $(MAKE) -C $(TF_A_PATH) $(TF_A_FLAGS) all fip
 	mkdir -p $(BINARIES_PATH)
@@ -281,7 +280,6 @@ arm-tf-clean: edk2-clean rmm-clean
 $(QEMU_BUILD)/config-host.mak:
 	cd $(QEMU_PATH); ./configure --target-list=aarch64-softmmu --enable-slirp\
 			$(QEMU_CONFIGURE_PARAMS_COMMON)
-
 qemu: $(QEMU_BUILD)/.stamp_qemu
 
 $(QEMU_BUILD)/.stamp_qemu: $(QEMU_BUILD)/config-host.mak
@@ -404,7 +402,8 @@ LINUX_GUEST_DEFCONFIG_COMMON_FILES := \
 	$(CURDIR)/kconfigs/qemu.conf \
 	$(CURDIR)/kconfigs/cca.conf
 
-linux-guest:
+.PHONY: linux-guest
+linux-guest: linux
 	$(MAKE) linux-common \
 		LINUX_PATH=$(LINUX_GUEST_PATH) \
 		LINUX_DEFCONFIG_COMMON_FILES="$(LINUX_GUEST_DEFCONFIG_COMMON_FILES)"
