@@ -3,7 +3,9 @@ For running each use case, you first need to run the associated script:
  ```
  /mnt/out/bin/usecase[number].sh 
  ```
-Each script spans multiple *realms* required for the given use case. These realms can be accessed through dedicated `tmux` consoles (e.g., realmA console). When all realms are booted and accessible through their particular console, you can start executing the scripts of each use case. For each realm and each use case, a specific script is stored within that realm that can be executed. For example, **Realm B** in **use case 2** must execute the script `/root/usecase2/realmB.sh`. The scripts must be executed in the exact order described below, and each script should be started only after the previous one has completed successfully.
+Each script spans multiple *realms* required for the given use case. These realms can be accessed through dedicated `tmux` consoles (e.g., realmA console). For each realm and each use case, a specific script is stored within that realm that can be executed. For example, **Realm B** in **use case 2** must execute the script `/root/usecase2/realmB.sh`. 
+
+**Important**: The scripts must be executed in the exact order described below, and each script should be started only after the previous one has completed successfully. When all realms are booted and accessible through their particular console, you can start executing the scripts of each use case.
 
 ## Use case 1 (video moderation):
 Realm A:
