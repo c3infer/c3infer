@@ -37,6 +37,7 @@
   <project name="hafnium/hafnium.git" path="hafnium" remote="tfo" revision="refs/tags/v2.10" clone-depth="1"/>
   <project name="linaro-swg/optee_examples.git" path="optee_examples" revision="refs/tags/4.2.0" clone-depth="1"/>
   <project name="linux-arm/linux-cca.git" path="linux" remote="linux" revision="master"/>
+  <project name="linux-arm/linux-cca.git" path="linux-guest" remote="linux" revision="master"/>
   <project name="op-tee-4.2.0/build.git" path="build" remote="clo" revision="cca/v8" />
   <project name="qemu/qemu.git" path="qemu" revision="stable-9.2"/>
   <project name="rmm-private" path="rmm" remote="rmm-priv" revision="cca/v8" groups="local::patches" clone-depth="1"/>
