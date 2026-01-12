@@ -35,11 +35,10 @@ qemu-system-aarch64\
       -device virtconsole,chardev=virtiocon0 \
       -mon chardev=virtiocon0,mode=readline \
       -kernel /mnt/out/bin/Image-guest \
-      -drive if=none,file=/mnt/out-br/images/rootfs2.img,format=raw,id=hd0 \
-      -device virtio-blk-pci,drive=hd0 \
+      -initrd /mnt/out-br/images/rootfs.cpio \
       -object memory-backend-file,size=64M,share=on,mem-path=/dev/shm/shm1,id=shm1 \
       -device ivshmem-plain,memdev=shm1,protected=true \
       -cpu host -M virt -enable-kvm -M gic-version=3,its=on \
       -smp 1 -m 512M -nographic \
-      -append "console=hvc0 root=/dev/vda1 rw" < /dev/hvc2 >/dev/hvc2 &
+      -append "console=hvc0" < /dev/hvc2 >/dev/hvc2 &
 
