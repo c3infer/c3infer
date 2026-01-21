@@ -30,7 +30,6 @@
     <copyfile src="usecases/usecase1.sh" dest="out/bin/usecase1.sh"/>
     <copyfile src="usecases/usecase2.sh" dest="out/bin/usecase2.sh"/>
     <copyfile src="usecases/usecase3.sh" dest="out/bin/usecase3.sh"/>
-
   </project>
   <project name="cloud-hypervisor" remote="clo" revision="cca/v3"/>
   <project name="firmware/SCP-firmware.git" path="SCP-firmware" remote="arm-gitlab" revision="refs/tags/v2.13.0" clone-depth="1"/>

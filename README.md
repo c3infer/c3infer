@@ -13,6 +13,7 @@ mkdir c3infer
 cd c3infer
 repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git -b master -m default.xml
 repo sync -j32 --no-clone-bundle
+repo sync cca_patches
 cd build
 make -j32 toolchains
 make -j32
