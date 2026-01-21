@@ -6,16 +6,29 @@ This repository provides a step-by-step guide to reproduce and customize usecase
 sudo apt update
 sudo apt install tmux screen
 ```
-## 2 Build Components
+
+## 2 Build Components (kernel from source)
 ```
 mkdir c3infer
 cd c3infer
-repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git
+repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git -b master -m default.xml
+repo sync -j32 --no-clone-bundle
+cd build
+make -j32 toolchains
+make -j32
+```
+
+## 2 Build Components (with patches)
+```
+mkdir c3infer
+cd c3infer
+repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git -b master -m default.xml
 repo sync -j16 --no-clone-bundle
 ./cca_patches/apply_patches.sh
 cd build
 make -j16 toolchains
 make -j16
+TODO: copy Makefile
 ```
 
 ## 3 Run QEMU
