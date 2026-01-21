@@ -3,8 +3,7 @@
   <remote name="arm-gitlab" fetch="https://git.gitlab.arm.com/"/>
   <remote name="clo" fetch="https://git.codelinaro.org/linaro/dcap"/>
   <remote name="github" fetch="https://github.com"/>
-  <remote name="guest" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
-  <remote name="host" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>  
+  <remote name="linux" fetch="https://gitlab.arm.com/"/>  
   <remote name="patches" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
   <remote name="rmm-priv" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
   <remote name="tfo" fetch="https://git.trustedfirmware.org"/>
@@ -37,8 +36,8 @@
   <project name="git-http/xen.git" path="xen" remote="xenbits" revision="refs/tags/RELEASE-4.18.0" clone-depth="1"/>
   <project name="hafnium/hafnium.git" path="hafnium" remote="tfo" revision="refs/tags/v2.10" clone-depth="1"/>
   <project name="linaro-swg/optee_examples.git" path="optee_examples" revision="refs/tags/4.2.0" clone-depth="1"/>
-  <project name="host-linux" path="linux" remote="host" revision="cca-host/v9" groups="local::patches" clone-depth="1"/>
-  <project name="guest-linux" path="linux-guest" remote="guest" revision="cca-guest/v9" groups="local::patches" clone-depth="1"/>
+  <project name="linux-arm/linux-cca.git" path="linux" remote="linux" revision="master"/>
+  <project name="linux-arm/linux-cca.git" path="linux-guest" remote="linux" revision="master"/>
   <project name="op-tee-4.2.0/build.git" path="build" remote="clo" revision="cca/v8" />
   <project name="qemu/qemu.git" path="qemu" revision="stable-9.2"/>
   <project name="rmm-private" path="rmm" remote="rmm-priv" revision="cca/v8" groups="local::patches" clone-depth="1"/>
