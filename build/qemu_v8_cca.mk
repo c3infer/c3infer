@@ -684,21 +684,21 @@ run-only-multiregion:
          -device virtio-blk-pci,drive=hd0 \
          -append root=/dev/vda \
          -nodefaults \
+         -serial tcp:localhost:54319 \
          -serial tcp:localhost:54320 \
-         -serial tcp:localhost:54321 \
-         -chardev socket,mux=on,id=hvc0,port=54322,host=localhost \
+         -chardev socket,mux=on,id=hvc0,port=54321§,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc0 \
-         -chardev socket,mux=on,id=hvc1,port=54323,host=localhost \
+         -chardev socket,mux=on,id=hvc1,port=54322,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc1 \
-		 -chardev socket,mux=on,id=hvc2,port=54324,host=localhost \
+		 -chardev socket,mux=on,id=hvc2,port=54323,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc2 \
-		 -chardev socket,mux=on,id=hvc3,port=54325,host=localhost \
+		 -chardev socket,mux=on,id=hvc3,port=54324,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc3 \
-		 -chardev socket,mux=on,id=hvc4,port=54326,host=localhost \
+		 -chardev socket,mux=on,id=hvc4,port=54325,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc4 \
          -append "root=/dev/vda earlycon console=hvc0 nokaslr" \
