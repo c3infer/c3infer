@@ -17,14 +17,14 @@
    - Gather all peers configs -> DONE
    - Check that all configs in peers only list channels with self explicitly listed in the policy -> DONE
    - Shared memory channels: check that all the shared memory IPAs are filled with a PA using SGT -> DONE
-   - Shared memory channels: check that no other mappings involving self are present in SGT -> **TODO**
+   - Shared memory channels: check that no other mappings involving self are present in SGT -> DONE
    - Transition channels: check that all the peers have compatible configs with self -> **TODO**
    - Transition channels: track the allowed transitions for the group -> **TODO**   
   - Else:
    - Gather all peers configs -> DONE
    - Shared memory channels: check that all the shared memory IPAs are filled with a PA -> DONE
-   - Transition channels: check that all the peers have compatible transitions with self -> **TODO**
-   - Transition channels: track the policy transitions for the group -> **TODO** 
+   - Transition channels: check that all the peers have compatible transitions with self -> DONE
+   - Transition channels: track the policy transitions for the group -> DONE 
  - Action after validation:
   - If peer is gateway and strict, unmap all unprotected memory not listed in policy file -> **TODO**
   - If peer is not gateway, unmap all unprotected memory -> **TODO**
