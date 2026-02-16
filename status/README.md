@@ -26,11 +26,11 @@
    - Transition channels: check that all the peers have compatible transitions with self -> DONE
    - Transition channels: track the policy transitions for the group -> DONE 
  - Action after validation:
-  - If peer is gateway and strict, unmap all unprotected memory not listed in policy file -> **TODO**
-  - If peer is not gateway, unmap all unprotected memory -> **TODO**
-  - If strict, only allow/treat those transitions listed in the policy file -> **TODO**
-  - If not strict, set policy for listed transition in self -> **TODO**  
-  - Activate shared memory channels by assigning correct access right -> **TODO**
+  - If peer is gateway and strict, unmap all unprotected memory not listed in policy file -> DONE
+  - If peer is not gateway, unmap all unprotected memory -> DONE
+  - If strict, only allow/treat those transitions listed in the policy file -> DONE
+  - If not strict, set policy for listed transition in self -> DONE  
+  - Activate shared memory channels by assigning correct access right -> DONE
 
 **Feature 4: Attestation**
 - RMM: adapt metadata navigation to find groups -> **TODO**

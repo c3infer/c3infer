@@ -7,8 +7,8 @@ NAMES=("firmware" "secure_payload" "host" "realm A" "realm B" "realm C" "realm D
 PTYS=(/tmp/firmware_pty /tmp/secure_payload_pty /tmp/host_pty /tmp/realm1_pty /tmp/realm2_pty /tmp/realm3_pty /tmp/realm4_pty)
 
 # screen raw logs (in /tmp) + timestamped mirrors (in cwd)
-SCREEN_LOGS=(/tmp/firmware_screen.log /tmp/secure_payload_screen.log)
-TIMESTAMPED_LOGS=(firmware.log secure_payload.log)
+# SCREEN_LOGS=(/tmp/firmware_screen.log /tmp/secure_payload_screen.log)
+SCREEN_LOGS=(firmware.log secure_payload.log)
 
 cleanup() {
   tmux kill-session -t "$SESSION" 2>/dev/null || true
@@ -51,14 +51,5 @@ tmux new-window -t "$SESSION" -n "${NAMES[1]}" \
 for i in 2 3 4 5 6; do
   tmux new-window -t "$SESSION" -n "${NAMES[$i]}" "screen ${PTYS[$i]}"
 done
-
-# timestamped mirrors like your first script (requires moreutils 'ts')
-: > "${TIMESTAMPED_LOGS[0]}"; : > "${TIMESTAMPED_LOGS[1]}"
-if command -v ts >/dev/null 2>&1; then
-  ( tail -F -n +0 "${SCREEN_LOGS[0]}" | ts '[%F %T]' >> "${TIMESTAMPED_LOGS[0]}" ) >/dev/null 2>&1 &
-  ( tail -F -n +0 "${SCREEN_LOGS[1]}" | ts '[%F %T]' >> "${TIMESTAMPED_LOGS[1]}" ) >/dev/null 2>&1 &
-else
-  echo "WARN: 'ts' not found; timestamped logs firmware.log/secure_payload.log will not be generated."
-fi
 
 tmux attach -t "$SESSION"
