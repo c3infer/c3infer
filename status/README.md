@@ -9,7 +9,7 @@
 **Feature 3: Policy upload**
 - Guest: 
  - align JSON-to-binary parser to current spec -> DONE
- - add shared memory pre-faulting -> **TODO**
+ - add shared memory pre-faulting -> DONE
 - RMM: 
  - Policy validation:
   - Validate policy binary syntax -> DONE
