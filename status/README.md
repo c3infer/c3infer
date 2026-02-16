@@ -33,7 +33,7 @@
   - Activate shared memory channels by assigning correct access right -> DONE
 
 **Feature 4: Attestation**
-- RMM: adapt metadata navigation to find groups -> **TODO**
+- RMM: adapt metadata navigation to find groups -> DONE
 
 **Usecases**
 - Debos-fs: update disk with new usecases code -> **TODO**
