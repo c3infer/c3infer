@@ -26,7 +26,7 @@ Main scripts in disk:
 - `/root/usecases/rnet_ra/ra.sh` (or `/root/usecases/rnet_ra/ra_slave.sh` depending on scenario)
 
 ### Attestation
-Inside each realm in this group:
+Inside gateway realm A (`rnet`):
 
 ```bash
 /root/cca-workload-attestation report
@@ -104,7 +104,77 @@ Current configured sizing for `rg_rn_re`:
 - Single payload cap: `262112` bytes (256 KiB minus 32-byte header)
 
 ### Attestation
-Inside each realm in this group:
+Inside gateway realm A (`RG`):
+
+```bash
+/root/cca-workload-attestation report
+```
+
+On host, inspect policy payloads for this 3-realm group:
+
+```bash
+cat /sys/kernel/debug/cca_policies/payload0
+cat /sys/kernel/debug/cca_policies/payload1
+cat /sys/kernel/debug/cca_policies/payload2
+```
+
+---
+
+## Usecase: `rg_rf_ri`
+
+### Host
+Run:
+
+```bash
+c3infer/buildroot-external-cca/overlay/realm1_overlay/root/usecases/rg_rf_ri/start_realms.sh
+```
+
+This starts:
+- `RG` realm (with net)
+- `RF` realm
+- `RI` realm
+
+### Realms
+Usecase folder in disk:
+
+- `/root/usecases/rg_rf_ri`
+
+Scripts are split in two phases:
+- Setup phase (prefault + policy upload): `rg_setup.sh`, `rf_setup.sh`, `ri_setup.sh`
+- App phase (prompt/filter/inference/filter-back): `rg_app.sh`, `rf_app.sh`, `ri_app.sh`
+
+Recommended execution order:
+
+1. Setup/install phase (strictly sequential):
+```bash
+# RG terminal (wait until complete)
+cd /root/usecases/rg_rf_ri && ./rg_setup.sh
+
+# RF terminal (start only after RG setup finished)
+cd /root/usecases/rg_rf_ri && ./rf_setup.sh
+
+# RI terminal (start only after RF setup finished)
+cd /root/usecases/rg_rf_ri && ./ri_setup.sh
+```
+
+2. App phase:
+```bash
+# RI terminal (wait for filtered prompt)
+cd /root/usecases/rg_rf_ri && ./ri_app.sh
+
+# RF terminal (wait for prompt, then filter->infer->filter-back)
+cd /root/usecases/rg_rf_ri && ./rf_app.sh
+
+# RG terminal (interactive prompt + final output)
+cd /root/usecases/rg_rf_ri && ./rg_app.sh
+```
+
+Current configured sizing for `rg_rf_ri`:
+- Per-shmem size in policy: `0x2000`
+- Shared-memory policy permissions: `RW`
+
+### Attestation
+Inside gateway realm A (`RG`):
 
 ```bash
 /root/cca-workload-attestation report
