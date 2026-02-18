@@ -25,6 +25,20 @@ Main scripts in disk:
 - `/root/usecases/rnet_ra/rnet.sh`
 - `/root/usecases/rnet_ra/ra.sh` (or `/root/usecases/rnet_ra/ra_slave.sh` depending on scenario)
 
+### Attestation
+Inside each realm in this group:
+
+```bash
+/root/cca-workload-attestation report
+```
+
+On host, inspect policy payloads for this 2-realm group:
+
+```bash
+cat /sys/kernel/debug/cca_policies/payload0
+cat /sys/kernel/debug/cca_policies/payload1
+```
+
 ---
 
 ## Usecase: `rg_rn_re`
@@ -88,6 +102,21 @@ This creates `/root/usecases/rg_rn_re/tiny.mp4` (target: `<= 262112` bytes).
 Current configured sizing for `rg_rn_re`:
 - Per-shmem size in policy: `0x40000` (256 KiB)
 - Single payload cap: `262112` bytes (256 KiB minus 32-byte header)
+
+### Attestation
+Inside each realm in this group:
+
+```bash
+/root/cca-workload-attestation report
+```
+
+On host, inspect policy payloads for this 3-realm group:
+
+```bash
+cat /sys/kernel/debug/cca_policies/payload0
+cat /sys/kernel/debug/cca_policies/payload1
+cat /sys/kernel/debug/cca_policies/payload2
+```
 
 ---
 
