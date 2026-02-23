@@ -31,6 +31,7 @@
     <copyfile src="build/start_cca_pty.sh" dest="build/start_cca_pty.sh"/>
     <copyfile src="build/start_cca_multiregion_pty_with_disk_cp.sh" dest="build/start_cca_multiregion_pty_with_disk_cp.sh"/>
     <copyfile src="build/build_debos_disk_with_remote_gguf.sh" dest="build/build_debos_disk_with_remote_gguf.sh"/>
+    <copyfile src="build/build_debos_disk_container_sudo.sh" dest="build/build_debos_disk_container_sudo.sh"/>
     <copyfile src="build/start_cca_multiregion_pty_with_remote_disk.sh" dest="build/start_cca_multiregion_pty_with_remote_disk.sh"/>
     <copyfile src="usecases/usecase1.sh" dest="out/bin/usecase1.sh"/>
     <copyfile src="usecases/usecase2.sh" dest="out/bin/usecase2.sh"/>

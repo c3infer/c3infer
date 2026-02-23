@@ -89,7 +89,7 @@ if [[ "${FORCE_REBUILD_DISK:-0}" == "1" || ! -f "${OUT_IMG}" ]]; then
 
     make -C "${OPENCCA_DOCKER_DIR}" pull
     make -C "${OPENCCA_DOCKER_DIR}" start
-    make -C "${OPENCCA_DOCKER_DIR}" run CMD="bash -lc 'cd /opencca/debos-fs && ./buildfs.sh'"
+    make -C "${OPENCCA_DOCKER_DIR}" run CMD="sudo bash -lc 'cd /opencca/debos-fs && ./buildfs.sh'"
   }
 
   case "${DEBOS_MODE}" in

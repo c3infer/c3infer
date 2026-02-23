@@ -7,8 +7,17 @@ This repository provides a step-by-step guide to reproduce and customize usecase
 ## 1 Install Requirements
 ```
 sudo apt update
-sudo apt install tmux screen
+sudo apt install tmux screen docker.io
+sudo systemctl enable --now docker
 ```
+
+Container mode (used in fresh installation below) requires Docker socket access for your user:
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+docker ps
+```
+If `docker ps` still fails, log out and log back in once.
 
 ## 2 Fresh Installation in `c3infer` (remote disk + model)
 ```bash
@@ -19,7 +28,8 @@ repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git -b master -m 
 repo sync -j32 --no-clone-bundle
 
 cd build
-make -j32 full-stack DEBOS_MODE=container OPENCCA_DOCKER_DIR=../opencca-build/docker
+sudo ./build_debos_disk_container_sudo.sh
+make -j32 full-stack
 ```
 
 This flow uses `default_remote_disk.xml` and automatically prepares:
@@ -41,6 +51,8 @@ Disk build controls (optional):
 - `OPENCCA_DOCKER_DIR=<path to opencca-build/docker>`
 - `MODEL_SHA256=<expected model sha256>`
 - `FORCE_REBUILD_DISK=1`
+
+If you already built the disk separately with `sudo ./build_debos_disk_container_sudo.sh`, no extra `DEBOS_MODE`/`OPENCCA_DOCKER_DIR` flags are needed for `make -j32 full-stack`.
 
 ## 3 Build Components (kernel from source)
 ```
