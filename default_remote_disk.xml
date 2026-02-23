@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <remote name="arm-gitlab" fetch="https://git.gitlab.arm.com/"/>
+  <remote name="clo" fetch="https://git.codelinaro.org/linaro/dcap"/>
+  <remote name="github" fetch="https://github.com"/>
+  <remote name="guest" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
+  <remote name="host" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
+  <remote name="patches" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
+  <remote name="rmm-priv" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
+  <remote name="tfo" fetch="https://git.trustedfirmware.org"/>
+  <remote name="u-boot" fetch="https://source.denx.de/u-boot"/>
+  <remote name="xenbits" fetch="https://xenbits.xen.org/"/>
+
+  <default remote="github" revision="master"/>
+
+  <project name="Mbed-TLS/mbedtls.git" path="mbedtls" revision="refs/tags/mbedtls-2.26.0" clone-depth="1"/>
+  <project name="OP-TEE/optee_client.git" path="optee_client" revision="refs/tags/4.2.0" clone-depth="1"/>
+  <project name="OP-TEE/optee_os.git" path="optee_os" revision="refs/tags/4.2.0" clone-depth="1"/>
+  <project name="OP-TEE/optee_test.git" path="optee_test" revision="refs/tags/4.2.0" clone-depth="1"/>
+  <project name="apache/incubator-teaclave-trustzone-sdk.git" path="optee_rust" revision="ec3eefd9de68a18d5acee1a151e0d93f6898807f"/>
+  <project name="buildroot-external-cca.git" path="buildroot-external-cca" remote="clo" revision="43002cba5c58bde383ad4ee6b706cd88bdc5e2b8" clone-depth="1"/>
+  <project name="buildroot/buildroot.git" path="buildroot" revision="refs/tags/2025.05" clone-depth="1"/>
+  <project name="buildroot_overlay" path="buildroot-external-cca/overlay" remote="patches" revision="main" groups="local::patches"/>
+  <project name="debos-fs" path="debos-fs" remote="patches" revision="main" groups="local::patches"/>
+  <project name="cca_patches" remote="patches" groups="local::patches">
+    <copyfile src="buildroot-external-cca/qemu.mk" dest="buildroot-external-cca/package/qemu-cca/qemu.mk"/>
+    <copyfile src="buildroot-external-cca/cca_defconfig" dest="buildroot-external-cca/configs/cca_defconfig"/>
+    <linkfile src="build/qemu_v8_cca.mk" dest="build/Makefile"/>
+    <copyfile src="build/start_cca_multiregion_pty.sh" dest="build/start_cca_multiregion_pty.sh"/>
+    <copyfile src="build/start_cca_pty.sh" dest="build/start_cca_pty.sh"/>
+    <copyfile src="build/start_cca_multiregion_pty_with_disk_cp.sh" dest="build/start_cca_multiregion_pty_with_disk_cp.sh"/>
+    <copyfile src="build/build_debos_disk_with_remote_gguf.sh" dest="build/build_debos_disk_with_remote_gguf.sh"/>
+    <copyfile src="build/start_cca_multiregion_pty_with_remote_disk.sh" dest="build/start_cca_multiregion_pty_with_remote_disk.sh"/>
+    <copyfile src="usecases/usecase1.sh" dest="out/bin/usecase1.sh"/>
+    <copyfile src="usecases/usecase2.sh" dest="out/bin/usecase2.sh"/>
+    <copyfile src="usecases/usecase3.sh" dest="out/bin/usecase3.sh"/>
+  </project>
+  <project name="cloud-hypervisor" remote="clo" revision="cca/v3"/>
+  <project name="firmware/SCP-firmware.git" path="SCP-firmware" remote="arm-gitlab" revision="refs/tags/v2.13.0" clone-depth="1"/>
+  <project name="git-http/xen.git" path="xen" remote="xenbits" revision="refs/tags/RELEASE-4.18.0" clone-depth="1"/>
+  <project name="hafnium/hafnium.git" path="hafnium" remote="tfo" revision="refs/tags/v2.10" clone-depth="1"/>
+  <project name="linaro-swg/optee_examples.git" path="optee_examples" revision="refs/tags/4.2.0" clone-depth="1"/>
+  <project name="host-linux" path="linux" remote="host" revision="cca-host/v9" groups="local::patches" clone-depth="1"/>
+  <project name="guest-linux" path="linux-guest" remote="guest" revision="cca-guest/v9" groups="local::patches" clone-depth="1"/>
+  <project name="op-tee-4.2.0/build.git" path="build" remote="clo" revision="cca/v8"/>
+  <project name="qemu/qemu.git" path="qemu" revision="stable-9.2"/>
+  <project name="rmm-private" path="rmm" remote="rmm-priv" revision="cca/v8" groups="local::patches" clone-depth="1"/>
+  <project name="tf-a/trusted-firmware-a" path="trusted-firmware-a" remote="clo" revision="cca/v9" clone-depth="1"/>
+  <project name="tianocore/edk2.git" path="edk2" revision="b2db39cefe1318d13d30040d31a6954e6b7219ce" sync-s="true"/>
+  <project name="u-boot.git" path="u-boot" remote="u-boot" revision="refs/tags/v2023.07.02" clone-depth="1"/>
+</manifest>
