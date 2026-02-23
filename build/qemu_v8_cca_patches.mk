@@ -167,6 +167,9 @@ all: remote-disk $(TARGET_DEPS)
 
 clean: $(TARGET_CLEAN)
 
+.PHONY: full-stack
+full-stack: toolchains all
+
 $(BINARIES_PATH):
 	mkdir -p $@
 
