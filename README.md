@@ -37,12 +37,12 @@ This flow uses `default_remote_disk.xml` and automatically prepares:
 - debos disk image build
 - normal firmware/kernel/qemu/rootfs build
 
-Note: `start_cca_multiregion_pty_with_remote_disk.sh` does not compile components and does not build a disk. It only copies the already built `debos-fs/out/rootfs.img` into `out-br/images/rootfs{1,2,3}.img` and starts PTYs.
+Note: `start_cca.sh` does not compile components and does not build a disk. It only copies the already built `debos-fs/out/rootfs.img` into `out-br/images/rootfs{1,2,3}.img` and starts PTYs.
 Also make sure `../opencca-build/docker` exists in the same workspace (or set `OPENCCA_DOCKER_DIR` to your actual path).
 
 Run:
 ```bash
-./start_cca_multiregion_pty_with_remote_disk.sh
+./start_cca.sh
 make run-only-multiregion
 ```
 
