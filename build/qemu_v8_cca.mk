@@ -149,6 +149,8 @@ REMOTE_DISK_SCRIPT ?= $(ROOT)/build/build_debos_disk_with_remote_gguf.sh
 MODEL_URL ?=
 MODEL_SHA256 ?=
 FORCE_REBUILD_DISK ?= 0
+DEBOS_MODE ?= auto
+OPENCCA_DOCKER_DIR ?= $(ROOT)/opencca-build/docker
 
 .PHONY: remote-disk
 remote-disk:
@@ -157,6 +159,8 @@ remote-disk:
 		FORCE_REBUILD_DISK="$(FORCE_REBUILD_DISK)" \
 		MODEL_URL="$(MODEL_URL)" \
 		MODEL_SHA256="$(MODEL_SHA256)" \
+		DEBOS_MODE="$(DEBOS_MODE)" \
+		OPENCCA_DOCKER_DIR="$(OPENCCA_DOCKER_DIR)" \
 		"$(REMOTE_DISK_SCRIPT)"; \
 	else \
 		echo "[remote-disk] skip: missing $(REMOTE_DISK_SCRIPT)"; \

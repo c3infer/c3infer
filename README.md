@@ -35,6 +35,18 @@ Run:
 make run-only-multiregion
 ```
 
+If `debos` is not installed on host, keep using Make only and force container mode:
+```bash
+cd build
+make -j32 full-stack DEBOS_MODE=container OPENCCA_DOCKER_DIR=../opencca-build/docker
+```
+
+Disk build controls (optional):
+- `DEBOS_MODE=auto|local|container` (default: `auto`)
+- `OPENCCA_DOCKER_DIR=<path to opencca-build/docker>`
+- `MODEL_SHA256=<expected model sha256>`
+- `FORCE_REBUILD_DISK=1`
+
 ## 3 Build Components (kernel from source)
 ```
 mkdir c3infer

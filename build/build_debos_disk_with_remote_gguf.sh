@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEBOS_DIR="${ROOT_DIR}/debos-fs"
+OPENCCA_DOCKER_DIR="${OPENCCA_DOCKER_DIR:-${ROOT_DIR}/opencca-build/docker}"
+DEBOS_MODE="${DEBOS_MODE:-auto}" # auto | local | container
 
 MODEL_URL="${MODEL_URL:-https://huggingface.co/Mungert/gpt2-GGUF/resolve/main/gpt2-q8_0.gguf}"
 EXPECTED_SHA256="${MODEL_SHA256:-6029c84fa164349d9babfef32ed1c19ee1a912ea5c22bf37eeb7cbbf42cb98b8}"
@@ -63,10 +65,57 @@ fi
 
 if [[ "${FORCE_REBUILD_DISK:-0}" == "1" || ! -f "${OUT_IMG}" ]]; then
   echo "Building disk image with debos-fs..."
-  (
-    cd "${DEBOS_DIR}"
-    ./buildfs.sh
-  )
+
+  run_local_build() {
+    (
+      cd "${DEBOS_DIR}"
+      ./build.sh \
+        --py-enable 1 \
+        --reqs-file "${DEBOS_DIR}/requirements.txt" \
+        --format ext4 \
+        --imgsize 2300MB \
+        --console hvc0 \
+        --overlay-dest / \
+        --custom-script ./script.sh
+    )
+  }
+
+  run_container_build() {
+    if [[ ! -f "${OPENCCA_DOCKER_DIR}/Makefile" ]]; then
+      echo "ERROR: opencca-build docker Makefile not found: ${OPENCCA_DOCKER_DIR}/Makefile" >&2
+      echo "Set OPENCCA_DOCKER_DIR to your opencca-build/docker path." >&2
+      exit 1
+    fi
+
+    make -C "${OPENCCA_DOCKER_DIR}" pull
+    make -C "${OPENCCA_DOCKER_DIR}" start
+    make -C "${OPENCCA_DOCKER_DIR}" run CMD="cd /opencca/debos-fs && ./buildfs.sh"
+  }
+
+  case "${DEBOS_MODE}" in
+    local)
+      if ! command -v debos >/dev/null 2>&1; then
+        echo "ERROR: DEBOS_MODE=local but debos is not installed on host." >&2
+        exit 1
+      fi
+      run_local_build
+      ;;
+    container)
+      run_container_build
+      ;;
+    auto)
+      if command -v debos >/dev/null 2>&1; then
+        run_local_build
+      else
+        run_container_build
+      fi
+      ;;
+    *)
+      echo "ERROR: invalid DEBOS_MODE='${DEBOS_MODE}' (use auto|local|container)" >&2
+      exit 1
+      ;;
+  esac
+
   echo "Disk image ready at ${OUT_IMG}"
 else
   echo "Disk image already present at ${OUT_IMG}"
