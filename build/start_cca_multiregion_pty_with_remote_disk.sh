@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-SRC_IMG="${OPENCCA_OUT_IMG:-${ROOT_DIR}/opencca-build/out/rootfs.img}"
+SRC_IMG="${DEBOS_OUT_IMG:-${ROOT_DIR}/debos-fs/out/rootfs.img}"
 IMAGES_DIR="${ROOT_DIR}/out-br/images"
 
 if [[ ! -f "${SRC_IMG}" ]]; then
