@@ -19,7 +19,7 @@ repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git -b master -m 
 repo sync -j32 --no-clone-bundle
 
 cd build
-make -j32 full-stack
+make -j32 full-stack DEBOS_MODE=container OPENCCA_DOCKER_DIR=../opencca-build/docker
 ```
 
 This flow uses `default_remote_disk.xml` and automatically prepares:
@@ -28,17 +28,12 @@ This flow uses `default_remote_disk.xml` and automatically prepares:
 - normal firmware/kernel/qemu/rootfs build
 
 Note: `start_cca_multiregion_pty_with_remote_disk.sh` does not compile components; it only prepares disk/model and starts PTYs.
+Also make sure `../opencca-build/docker` exists in the same workspace (or set `OPENCCA_DOCKER_DIR` to your actual path).
 
 Run:
 ```bash
 ./start_cca_multiregion_pty_with_remote_disk.sh
 make run-only-multiregion
-```
-
-If `debos` is not installed on host, keep using Make only and force container mode:
-```bash
-cd build
-make -j32 full-stack DEBOS_MODE=container OPENCCA_DOCKER_DIR=../opencca-build/docker
 ```
 
 Disk build controls (optional):
