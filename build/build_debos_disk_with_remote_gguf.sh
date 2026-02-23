@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEBOS_DIR="${ROOT_DIR}/debos-fs"
 
 MODEL_URL="${MODEL_URL:-https://huggingface.co/Mungert/gpt2-GGUF/resolve/main/gpt2-q8_0.gguf}"
-EXPECTED_SHA256="${MODEL_SHA256:-a2c92537a94d013321c505a18d3726485875076b81e94106f12a6f0f718ce83c}"
+EXPECTED_SHA256="${MODEL_SHA256:-6029c84fa164349d9babfef32ed1c19ee1a912ea5c22bf37eeb7cbbf42cb98b8}"
 
 MODEL_DST="${DEBOS_DIR}/overlay/root/usecases/rg_rf_ri/model.gguf"
 OUT_IMG="${DEBOS_DIR}/out/rootfs.img"
