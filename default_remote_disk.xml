@@ -21,7 +21,7 @@
   <project name="buildroot-external-cca.git" path="buildroot-external-cca" remote="clo" revision="43002cba5c58bde383ad4ee6b706cd88bdc5e2b8" clone-depth="1"/>
   <project name="buildroot/buildroot.git" path="buildroot" revision="refs/tags/2025.05" clone-depth="1"/>
   <project name="buildroot_overlay" path="buildroot-external-cca/overlay" remote="patches" revision="main" groups="local::patches"/>
-  <project name="debos-fs" path="debos-fs" remote="patches" revision="main" groups="local::patches"/>
+  <project name="debos-fs" path="debos-fs" remote="patches" revision="master" groups="local::patches"/>
   <project name="cca_patches" remote="patches" groups="local::patches">
     <copyfile src="buildroot-external-cca/qemu.mk" dest="buildroot-external-cca/package/qemu-cca/qemu.mk"/>
     <copyfile src="buildroot-external-cca/cca_defconfig" dest="buildroot-external-cca/configs/cca_defconfig"/>

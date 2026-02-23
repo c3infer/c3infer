@@ -145,7 +145,25 @@ ifeq ($(WITH_SCMI),y)
 TARGET_DEPS		+= $(SCMI_DTB)
 endif
 
-all: $(TARGET_DEPS)
+REMOTE_DISK_SCRIPT ?= $(ROOT)/build/build_debos_disk_with_remote_gguf.sh
+MODEL_URL ?=
+MODEL_SHA256 ?=
+FORCE_REBUILD_DISK ?= 0
+
+.PHONY: remote-disk
+remote-disk:
+	@if [ -x "$(REMOTE_DISK_SCRIPT)" ]; then \
+		echo "[remote-disk] preparing rootfs image (model + disk)"; \
+		FORCE_REBUILD_DISK="$(FORCE_REBUILD_DISK)" \
+		MODEL_URL="$(MODEL_URL)" \
+		MODEL_SHA256="$(MODEL_SHA256)" \
+		"$(REMOTE_DISK_SCRIPT)"; \
+	else \
+		echo "[remote-disk] skip: missing $(REMOTE_DISK_SCRIPT)"; \
+		echo "[remote-disk] tip: use default_remote_disk.xml (or add the helper script)."; \
+	fi
+
+all: remote-disk $(TARGET_DEPS)
 
 clean: $(TARGET_CLEAN)
 
