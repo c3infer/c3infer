@@ -712,7 +712,7 @@ run-only-multiregion:
          -nodefaults \
          -serial tcp:localhost:54319 \
          -serial tcp:localhost:54320 \
-         -chardev socket,mux=on,id=hvc0,port=54321§,host=localhost \
+         -chardev socket,mux=on,id=hvc0,port=54321,host=localhost \
          -device virtio-serial-device \
          -device virtconsole,chardev=hvc0 \
          -chardev socket,mux=on,id=hvc1,port=54322,host=localhost \
