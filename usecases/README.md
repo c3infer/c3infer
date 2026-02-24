@@ -10,7 +10,7 @@ Policy payloads are exposed through host debugfs and are visible to the gateway 
 
 In other words, each payload is seen by either `RG` or `RNET`, depending on the use case topology.
 
-## Use Case: `rnet_ra`
+## Use Case: `rnet_ra` - Network service Realm
 
 ### Host
 Run:
@@ -49,7 +49,7 @@ cat /sys/kernel/debug/cca_policies/payload1
 
 ---
 
-## Use Case: `rg_rn_re`
+## Use Case: `rg_rn_re` - Multi-stage Video Moderation
 
 ### Host
 Run:
@@ -128,7 +128,7 @@ cat /sys/kernel/debug/cca_policies/payload2
 
 ---
 
-## Use Case: `rg_rf_ri`
+## Use Case: `rg_rf_ri` - Guard-Railed LLM Inference
 
 ### Host
 Run:
