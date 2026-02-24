@@ -10,6 +10,19 @@ Policy payloads are exposed through host debugfs and are visible to the gateway 
 
 In other words, each payload is seen by either `RG` or `RNET`, depending on the use case topology.
 
+## Shared Rule: tmux Realm Mapping
+
+- For `rnet_ra`:
+- `rnet` = `realmA` in tmux
+- `ra` = `realmB` in tmux
+
+- For the other use cases, realms follow launch order:
+- `realmA` = first name in the use case
+- `realmB` = second name in the use case
+- `realmC` = third name in the use case (when present)
+- Example: `rg_rn_re` => `rg=realmA`, `rn=realmB`, `re=realmC`
+- Example: `rg_rf_ri` => `rg=realmA`, `rf=realmB`, `ri=realmC`
+
 ## Use Case: `rnet_ra` - Network service Realm
 
 ### Host
@@ -35,7 +48,12 @@ Inside the started realms:
 
 Main scripts in disk:
 - `/root/usecases/rnet_ra/rnet.sh`
-- `/root/usecases/rnet_ra/ra.sh` (or `/root/usecases/rnet_ra/ra_slave.sh` depending on scenario)
+- `/root/usecases/rnet_ra/ra.sh`
+
+Run `RA` with:
+```bash
+/root/usecases/rnet_ra/ra.sh
+```
 
 ### Attestation
 Inside gateway realm A (`rnet`):
