@@ -13,6 +13,8 @@ In other words, each payload is seen by either `RG` or `RNET`, depending on the 
 ## Use Case: `rnet_ra` - Network service Realm
 
 ### Host
+Login password: `root`.
+
 Run:
 
 ```bash
@@ -25,6 +27,8 @@ This starts:
 
 ### Realms
 Inside the started realms:
+
+`RA` login password: `root`.
 
 1. Start consumer/receiver side first (`ra` side).
 2. Start producer/sender side second (`rnet` side).
