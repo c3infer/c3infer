@@ -24,7 +24,7 @@ rm -f "${PTYS[@]}" "${SCREEN_LOGS[@]}"
 
 # Sync latest debos disk image into out-br/images if changed.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_IMG="${SCRIPT_DIR}/../../staging/debos-fs/out/rootfs.img"
+SRC_IMG="${DEBOS_OUT_IMG:-${SCRIPT_DIR}/../debos-fs/out/rootfs.img}"
 if [[ -f "${SRC_IMG}" ]]; then
   IMAGES_DIR="${SCRIPT_DIR}/../out-br/images"
   mkdir -p "${IMAGES_DIR}"
