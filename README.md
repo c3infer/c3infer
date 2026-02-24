@@ -1,7 +1,5 @@
 # cca_patches
 
-Find the project status [here](status/README.md)
-
 This repository provides a step-by-step guide to reproduce and customize usecases of the paper.
 
 ## 1 Install Requirements
