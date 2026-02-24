@@ -3,10 +3,10 @@
   <remote name="arm-gitlab" fetch="https://git.gitlab.arm.com/"/>
   <remote name="clo" fetch="https://git.codelinaro.org/linaro/dcap"/>
   <remote name="github" fetch="https://github.com"/>
-  <remote name="guest" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
-  <remote name="host" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
-  <remote name="patches" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
-  <remote name="rmm-priv" fetch="ssh://git@gitlab.doc.ic.ac.uk/c3infer/"/>
+  <remote name="guest" fetch="https://github.com/c3infer/"/>
+  <remote name="host" fetch="https://github.com/c3infer/"/>
+  <remote name="patches" fetch="https://github.com/c3infer/"/>
+  <remote name="rmm-priv" fetch="https://github.com/c3infer/"/>
   <remote name="tfo" fetch="https://git.trustedfirmware.org"/>
   <remote name="u-boot" fetch="https://source.denx.de/u-boot"/>
   <remote name="xenbits" fetch="https://xenbits.xen.org/"/>
