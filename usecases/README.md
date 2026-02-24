@@ -43,17 +43,19 @@ Inside the started realms:
 
 `RA` login password: `root`.
 
-1. Start consumer/receiver side first (`ra` side).
-2. Start producer/sender side second (`rnet` side).
+Run realms like this:
+```bash
+# realmA (rnet)
+/root/usecases/rnet_ra/rnet.sh
+
+# realmB (ra)
+/root/usecases/rnet_ra/ra.sh
+```
 
 Main scripts in disk:
 - `/root/usecases/rnet_ra/rnet.sh`
 - `/root/usecases/rnet_ra/ra.sh`
 
-Run `RA` with:
-```bash
-/root/usecases/rnet_ra/ra.sh
-```
 
 ### Attestation
 Inside gateway realm A (`rnet`):
