@@ -2,6 +2,23 @@
 
 This file explains how to run each use case, split by Host and Realm steps.
 
+## tmux Quick Navigation
+
+Use `Ctrl+b` as the tmux prefix, then:
+
+```bash
+# next window
+Ctrl+b n
+
+# previous window
+Ctrl+b p
+
+# switch to specific window number
+Ctrl+b 0
+Ctrl+b 1
+Ctrl+b 2
+```
+
 ## Use Case: `rnet_ra` - Network service Realm
 
 ### Host
@@ -164,11 +181,7 @@ cd /root/usecases/rg_rf_ri && ./rf_app.sh
 cd /root/usecases/rg_rf_ri && ./rg_app.sh
 ```
 
-Current configured sizing for `rg_rf_ri`:
-- Per-shmem size in policy: `0x2000`
-- Shared-memory policy permissions: `RW`
-
-### Attestation
+### Run group attestation
 Inside gateway realm A (`RG`):
 
 ```bash
