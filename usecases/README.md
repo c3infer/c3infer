@@ -19,6 +19,10 @@ Ctrl+b 1
 Ctrl+b 2
 ```
 
+## Important
+
+Always restart the full stack before running a use case (or switching to a different use case).
+
 ## Use Case: `rnet_ra` - Network service Realm
 
 ### Host
