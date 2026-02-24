@@ -16,7 +16,7 @@ In other words, each payload is seen by either `RG` or `RNET`, depending on the 
 Run:
 
 ```bash
-/root/c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rnet_ra/start_realms.sh
+/root/usecases/rnet_ra/start_realms.sh
 ```
 
 This starts:
@@ -55,7 +55,7 @@ cat /sys/kernel/debug/cca_policies/payload1
 Run:
 
 ```bash
-/root/c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rg_ri_re/start_realms.sh
+/root/usecases/rg_ri_re/start_realms.sh
 ```
 
 This starts:
@@ -134,7 +134,7 @@ cat /sys/kernel/debug/cca_policies/payload2
 Run:
 
 ```bash
-/root/c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rg_rf_ri/start_realms.sh
+/root/usecases/rg_rf_ri/start_realms.sh
 ```
 
 This starts:
