@@ -31,12 +31,7 @@ Run realms like this:
 /root/usecases/rnet_ra/ra.sh
 ```
 
-Main scripts in disk:
-- `/root/usecases/rnet_ra/rnet.sh`
-- `/root/usecases/rnet_ra/ra.sh`
-
-
-### Attestation
+### Run group attestation
 Inside gateway realm A (`rnet`):
 
 ```bash
@@ -75,9 +70,6 @@ Scripts are split in two phases:
 - Setup phase (prefault + policy upload): `rg_setup.sh`, `rn_setup.sh`, `re_setup.sh`
 - App phase (stream/analyze/encode): `rg_app.sh`, `rn_app.sh`, `re_app.sh`
 
-Compatibility wrappers:
-- `rg.sh`, `rn.sh`, `re.sh` (run setup+app together)
-
 Recommended execution order:
 
 1. Setup/install phase (strictly sequential):
@@ -104,11 +96,7 @@ cd /root/usecases/rg_rn_re && ./re_app.sh
 cd /root/usecases/rg_rn_re && ./rg_app.sh
 ```
 
-Current configured sizing for `rg_rn_re`:
-- Per-shmem size in policy: `0x40000` (256 KiB)
-- Single payload cap: `262112` bytes (256 KiB minus 32-byte header)
-
-### Attestation
+### Run group attestation
 Inside gateway realm A (`RG`):
 
 ```bash
