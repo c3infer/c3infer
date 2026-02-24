@@ -3,27 +3,24 @@
 Minimal guide for the current `default_remote_disk.xml` flow.
 
 ## 1) Host prerequisites
+Base tools:
 ```bash
 sudo apt update
 sudo apt install -y git repo tmux screen docker.io
 sudo systemctl enable --now docker
 ```
 
-Enable Docker access for your user (one-time):
-```bash
-sudo usermod -aG docker $USER
-newgrp docker
-
-docker ps
-```
-If `docker ps` still fails, log out and log back in once.
+OP-TEE build environment prerequisites:
+- Follow the OP-TEE environment setup from Linaro:
+  <https://linaro.atlassian.net/wiki/spaces/QEMU/pages/29051027459/Building+an+RME+stack+for+QEMU#With-the-OP-TEE-build-environment>
+- Ensure the OP-TEE/QEMU build prerequisites from that page are installed before running the steps below.
 
 ## 2) Fresh workspace
 ```bash
 mkdir -p c3infer
 cd c3infer
 
-repo init -u ssh://git@gitlab.doc.ic.ac.uk/c3infer/cca_patches.git -b master -m default_remote_disk.xml
+repo init -u https://github.com/c3infer/cca_patches.git -b master -m default_remote_disk.xml
 repo sync -j32 --no-clone-bundle
 ```
 
