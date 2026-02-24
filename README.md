@@ -53,8 +53,7 @@ make run-only-multiregion
 ```
 
 ## 5) Use Cases
-Use the external use case guide only:
-- [here](https://github.com/c3infer/cca_patches/tree/master/usecases)
+Use the external use case guide [here](https://github.com/c3infer/cca_patches/tree/master/usecases).
 
 ## Notes
 - `start_cca.sh` expects `../debos-fs/out/rootfs.img`.
