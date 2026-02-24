@@ -6,7 +6,7 @@ Minimal guide for the current `default_remote_disk.xml` flow.
 Base tools:
 ```bash
 sudo apt update
-sudo apt install -y git repo tmux screen docker.io
+sudo apt install -y git tmux screen docker.io
 sudo systemctl enable --now docker
 ```
 
