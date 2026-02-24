@@ -34,6 +34,12 @@ sudo ./build_debos_disk_container_sudo.sh
 
 # Build toolchains + firmware + kernels + buildroot/qemu artifacts
 make -j32 full-stack
+
+# Re-sync manifests/projects, then rebuild (workaround when cca_patches update is missed)
+cd ..
+repo sync -j32 --no-clone-bundle
+cd build
+make -j32 full-stack
 ```
 
 ## 4) Run
@@ -47,28 +53,8 @@ make run-only-multiregion
 ```
 
 ## 5) Use Cases
-From the host, start one use case:
-
-1. `rnet_ra` - **Network service Realm**
-```bash
-c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rnet_ra/start_realms.sh
-```
-
-2. `rg_re_rn` - **Multi-stage Video Moderation**
-```bash
-c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rg_ri_re/start_realms.sh
-```
-
-3. `rg_rf_ri` - **Guard-Railed LLM Inference**
-```bash
-c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rg_rf_ri/start_realms.sh
-```
-
-Then, inside each realm, run setup first and app scripts second.
-
-For this flow, payload inspection is done inside realms (gateway realm), not on the host.
-
-For script-level details, see: [usecases/README.md](usecases/README.md)
+Use the external use case guide only:
+- <https://github.com/c3infer/cca_patches/tree/master/usecases>
 
 ## Notes
 - `start_cca.sh` expects `../debos-fs/out/rootfs.img`.
@@ -83,7 +69,7 @@ Summary of the C3Infer-owned parts used by this stack.
 | Repo Path | Repo Name | Purpose |
 |---|---|---|
 | `cca_patches` | `cca_patches` | (this repository) Manifest, glue scripts, and build integration. |
-| `buildroot-external-cca/overlay` | `buildroot_overlay` | Realm/rootfs overlay content (`f_realm`) used in images. |
+| `buildroot-external-cca/overlay` | `buildroot_overlay` | Realm/rootfs overlay content (`f_realm`) used in the RamFS image. |
 | `debos-fs` | `debos-fs` | Debos rootfs image build and disk overlay pipeline. |
 | `opencca-build` | `opencca-build` | Dockerized environment used to run debos disk builds. |
 | `linux` | `host-linux` | Host kernel tree used by the stack. |
