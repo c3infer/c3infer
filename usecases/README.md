@@ -2,27 +2,6 @@
 
 This file explains how to run each use case, split by Host and Realm steps.
 
-## Shared Rule: Policy Payload Visibility
-
-Policy payloads are exposed through host debugfs and are visible to the gateway realm of the group:
-- `rnet_ra`: gateway is `RNET`
-- `rg_rn_re` and `rg_rf_ri`: gateway is `RG`
-
-In other words, each payload is seen by either `RG` or `RNET`, depending on the use case topology.
-
-## Shared Rule: tmux Realm Mapping
-
-- For `rnet_ra`:
-- `rnet` = `realmA` in tmux
-- `ra` = `realmB` in tmux
-
-- For the other use cases, realms follow launch order:
-- `realmA` = first name in the use case
-- `realmB` = second name in the use case
-- `realmC` = third name in the use case (when present)
-- Example: `rg_rn_re` => `rg=realmA`, `rn=realmB`, `re=realmC`
-- Example: `rg_rf_ri` => `rg=realmA`, `rf=realmB`, `ri=realmC`
-
 ## Use Case: `rnet_ra` - Network service Realm
 
 ### Host
@@ -103,25 +82,25 @@ Recommended execution order:
 
 1. Setup/install phase (strictly sequential):
 ```bash
-# RG terminal (wait until complete)
+# realmA (rg) terminal (wait until complete)
 cd /root/usecases/rg_rn_re && ./rg_setup.sh
 
-# RE terminal (start only after RG setup finished)
+# realmB (re) terminal (start only after RG setup finished)
 cd /root/usecases/rg_rn_re && ./re_setup.sh
 
-# RN terminal (start only after RE setup finished)
+# realmC (rn) terminal (start only after RE setup finished)
 cd /root/usecases/rg_rn_re && ./rn_setup.sh
 ```
 
 2. App phase:
 ```bash
-# RN terminal
+# realmC (rn) terminal
 cd /root/usecases/rg_rn_re && ./rn_app.sh
 
-# RE terminal
+# realmB (re) terminal
 cd /root/usecases/rg_rn_re && ./re_app.sh
 
-# RG terminal
+# realmA (rg) terminal
 cd /root/usecases/rg_rn_re && ./rg_app.sh
 ```
 
@@ -179,25 +158,25 @@ Recommended execution order:
 
 1. Setup/install phase (strictly sequential):
 ```bash
-# RG terminal (wait until complete)
+# realmA (rg) terminal (wait until complete)
 cd /root/usecases/rg_rf_ri && ./rg_setup.sh
 
-# RF terminal (start only after RG setup finished)
+# realmB (rf) terminal (start only after RG setup finished)
 cd /root/usecases/rg_rf_ri && ./rf_setup.sh
 
-# RI terminal (start only after RF setup finished)
+# realmC (ri) terminal (start only after RF setup finished)
 cd /root/usecases/rg_rf_ri && ./ri_setup.sh
 ```
 
 2. App phase:
 ```bash
-# RI terminal (wait for filtered prompt)
+# realmC (ri) terminal (wait for filtered prompt)
 cd /root/usecases/rg_rf_ri && ./ri_app.sh
 
-# RF terminal (wait for prompt, then filter->infer->filter-back)
+# realmB (rf) terminal (wait for prompt, then filter->infer->filter-back)
 cd /root/usecases/rg_rf_ri && ./rf_app.sh
 
-# RG terminal (interactive prompt + final output)
+# realmA (rg) terminal (interactive prompt + final output)
 cd /root/usecases/rg_rf_ri && ./rg_app.sh
 ```
 
