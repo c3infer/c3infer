@@ -1,54 +1,196 @@
-# Reproducing Use Cases
-For running each use case, you first need to run the associated script:
- ```
- /mnt/out/bin/usecase[number].sh 
- ```
-Each script spans multiple *realms* required for the given use case. These realms can be accessed through dedicated `tmux` consoles (e.g., realmA console). For each realm and each use case, a specific script is stored within that realm that can be executed. For example, **Realm B** in **use case 2** must execute the script `/root/usecase2/realmB.sh`. 
+# Usecases Runbook
 
-**Important**: The scripts must be executed in the exact order described below, and each script should be started only after the previous one has completed successfully. When all realms are booted and accessible through their particular console, you can start executing the scripts of each use case.
+This file explains how to run each usecase, split by Host actions and Realm actions.
 
-## Use case 1 (video moderation):
-Realm A:
-```
-./usecase1/realmA.sh
-```
-Realm B:
-```
-./usecase1/realmB.sh
-```
-Realm C:
-```
-./usecase1/realmC.sh
-```
-Realm D:
-```
-./usecase1/realmD.sh
+## Usecase: `rnet_ra`
+
+### Host
+Run:
+
+```bash
+c3infer/buildroot-external-cca/overlay/realm1_overlay/root/usecases/rnet_ra/start_realms.sh
 ```
 
-## Use case 2 (Loop-Back LLM Inference):
-Realm A:
-```
-./usecase2/realmA.sh
-```
-Realm B:
-```
-./usecase2/realmB.sh
-```
-Realm C:
-```
-./usecase2/realmC.sh
-```
-Realm A:
-```
-./usecase2/realmA_2.sh
+This starts:
+- `rnet` realm (with net)
+- `ra` realm
+
+### Realms
+Inside the started realms:
+
+1. Start consumer/receiver side first (`ra` side).
+2. Start producer/sender side second (`rnet` side).
+
+Main scripts in disk:
+- `/root/usecases/rnet_ra/rnet.sh`
+- `/root/usecases/rnet_ra/ra.sh` (or `/root/usecases/rnet_ra/ra_slave.sh` depending on scenario)
+
+### Attestation
+Inside gateway realm A (`rnet`):
+
+```bash
+/root/cca-workload-attestation report
 ```
 
-## Use case 3 (Service VM):
-Realm B:
+On host, inspect policy payloads for this 2-realm group:
+
+```bash
+cat /sys/kernel/debug/cca_policies/payload0
+cat /sys/kernel/debug/cca_policies/payload1
 ```
-./usecase3/realmB.sh
+
+---
+
+## Usecase: `rg_rn_re`
+
+### Host
+Run:
+
+```bash
+c3infer/buildroot-external-cca/overlay/realm1_overlay/root/usecases/rg_ri_re/start_realms.sh
 ```
-Realm A:
+
+This starts:
+- `RG` realm (with net)
+- `RE` realm
+- `RN` realm
+
+### Realms
+Usecase folder in disk:
+
+- `/root/usecases/rg_rn_re`
+
+Scripts are split in two phases:
+- Setup phase (prefault + policy upload): `rg_setup.sh`, `rn_setup.sh`, `re_setup.sh`
+- App phase (stream/analyze/encode): `rg_app.sh`, `rn_app.sh`, `re_app.sh`
+
+Compatibility wrappers:
+- `rg.sh`, `rn.sh`, `re.sh` (run setup+app together)
+
+Recommended execution order:
+
+1. Setup/install phase (strictly sequential):
+```bash
+# RG terminal (wait until complete)
+cd /root/usecases/rg_rn_re && ./rg_setup.sh
+
+# RE terminal (start only after RG setup finished)
+cd /root/usecases/rg_rn_re && ./re_setup.sh
+
+# RN terminal (start only after RE setup finished)
+cd /root/usecases/rg_rn_re && ./rn_setup.sh
 ```
-./usecase3/realmA.sh
+
+2. App phase:
+```bash
+# RN terminal
+cd /root/usecases/rg_rn_re && ./rn_app.sh
+
+# RE terminal
+cd /root/usecases/rg_rn_re && ./re_app.sh
+
+# RG terminal
+cd /root/usecases/rg_rn_re && ./rg_app.sh
 ```
+
+Before app phase, generate tiny input video once in RG realm:
+```bash
+cd /root/usecases/rg_rn_re && ./make_tiny.sh
+```
+This creates `/root/usecases/rg_rn_re/tiny.mp4` (target: `<= 262112` bytes).
+
+Current configured sizing for `rg_rn_re`:
+- Per-shmem size in policy: `0x40000` (256 KiB)
+- Single payload cap: `262112` bytes (256 KiB minus 32-byte header)
+
+### Attestation
+Inside gateway realm A (`RG`):
+
+```bash
+/root/cca-workload-attestation report
+```
+
+On host, inspect policy payloads for this 3-realm group:
+
+```bash
+cat /sys/kernel/debug/cca_policies/payload0
+cat /sys/kernel/debug/cca_policies/payload1
+cat /sys/kernel/debug/cca_policies/payload2
+```
+
+---
+
+## Usecase: `rg_rf_ri`
+
+### Host
+Run:
+
+```bash
+c3infer/buildroot-external-cca/overlay/realm1_overlay/root/usecases/rg_rf_ri/start_realms.sh
+```
+
+This starts:
+- `RG` realm (with net)
+- `RF` realm
+- `RI` realm
+
+### Realms
+Usecase folder in disk:
+
+- `/root/usecases/rg_rf_ri`
+
+Scripts are split in two phases:
+- Setup phase (prefault + policy upload): `rg_setup.sh`, `rf_setup.sh`, `ri_setup.sh`
+- App phase (prompt/filter/inference/filter-back): `rg_app.sh`, `rf_app.sh`, `ri_app.sh`
+
+Recommended execution order:
+
+1. Setup/install phase (strictly sequential):
+```bash
+# RG terminal (wait until complete)
+cd /root/usecases/rg_rf_ri && ./rg_setup.sh
+
+# RF terminal (start only after RG setup finished)
+cd /root/usecases/rg_rf_ri && ./rf_setup.sh
+
+# RI terminal (start only after RF setup finished)
+cd /root/usecases/rg_rf_ri && ./ri_setup.sh
+```
+
+2. App phase:
+```bash
+# RI terminal (wait for filtered prompt)
+cd /root/usecases/rg_rf_ri && ./ri_app.sh
+
+# RF terminal (wait for prompt, then filter->infer->filter-back)
+cd /root/usecases/rg_rf_ri && ./rf_app.sh
+
+# RG terminal (interactive prompt + final output)
+cd /root/usecases/rg_rf_ri && ./rg_app.sh
+```
+
+Current configured sizing for `rg_rf_ri`:
+- Per-shmem size in policy: `0x2000`
+- Shared-memory policy permissions: `RW`
+
+### Attestation
+Inside gateway realm A (`RG`):
+
+```bash
+/root/cca-workload-attestation report
+```
+
+On host, inspect policy payloads for this 3-realm group:
+
+```bash
+cat /sys/kernel/debug/cca_policies/payload0
+cat /sys/kernel/debug/cca_policies/payload1
+cat /sys/kernel/debug/cca_policies/payload2
+```
+
+---
+
+## Quick Checks
+
+- If upload fails with SGT errors, run setup scripts one-by-one before app scripts.
+- If parse fails, inspect the exact runtime config under `/root/usecases/.../configs`.
