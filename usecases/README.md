@@ -1,14 +1,22 @@
-# Usecases Runbook
+# Use Cases Runbook
 
-This file explains how to run each usecase, split by Host actions and Realm actions.
+This file explains how to run each use case, split by Host and Realm steps.
 
-## Usecase: `rnet_ra`
+## Shared Rule: Policy Payload Visibility
+
+Policy payloads are exposed through host debugfs and are visible to the gateway realm of the group:
+- `rnet_ra`: gateway is `RNET`
+- `rg_rn_re` and `rg_rf_ri`: gateway is `RG`
+
+In other words, each payload is seen by either `RG` or `RNET`, depending on the use case topology.
+
+## Use Case: `rnet_ra`
 
 ### Host
 Run:
 
 ```bash
-c3infer/buildroot-external-cca/overlay/realm1_overlay/root/usecases/rnet_ra/start_realms.sh
+c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rnet_ra/start_realms.sh
 ```
 
 This starts:
@@ -41,13 +49,13 @@ cat /sys/kernel/debug/cca_policies/payload1
 
 ---
 
-## Usecase: `rg_rn_re`
+## Use Case: `rg_rn_re`
 
 ### Host
 Run:
 
 ```bash
-c3infer/buildroot-external-cca/overlay/realm1_overlay/root/usecases/rg_ri_re/start_realms.sh
+c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rg_ri_re/start_realms.sh
 ```
 
 This starts:
@@ -120,13 +128,13 @@ cat /sys/kernel/debug/cca_policies/payload2
 
 ---
 
-## Usecase: `rg_rf_ri`
+## Use Case: `rg_rf_ri`
 
 ### Host
 Run:
 
 ```bash
-c3infer/buildroot-external-cca/overlay/realm1_overlay/root/usecases/rg_rf_ri/start_realms.sh
+c3infer/buildroot-external-cca/overlay/f_realm/root/usecases/rg_rf_ri/start_realms.sh
 ```
 
 This starts:
