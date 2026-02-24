@@ -30,7 +30,7 @@ From workspace `build/`:
 cd build
 
 # Build debos disk in OpenCCA container (requires sudo inside container)
-sudo ./build_debos_disk_container_sudo.sh
+sudo DEBOS_MODE=container ./build_debos_disk_with_remote_gguf.sh
 
 # Build toolchains + firmware + kernels + buildroot/qemu artifacts
 make -j32 full-stack
