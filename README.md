@@ -6,7 +6,7 @@ Minimal guide for the current `default_remote_disk.xml` flow.
 Base tools:
 ```bash
 sudo apt update
-sudo apt install -y git tmux screen docker.io
+sudo apt install -y git tmux screen docker.io gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 sudo systemctl enable --now docker
 ```
 
@@ -54,6 +54,32 @@ make run-only-multiregion
 
 ## 5) Use Cases
 Use the external use case guide [here](https://github.com/c3infer/cca_patches/tree/master/usecases).
+
+## 6) Gotcha: Wrong QEMU at Runtime
+If realm startup fails with:
+- `Property 'ivshmem-plain.protected' not found`
+
+you are running a QEMU binary that does not include the expected CCA patchset/ref.
+
+Debug:
+```bash
+# Run from workspace root (c3infer)
+./out-br/host/bin/qemu-system-aarch64 -device ivshmem-plain,help
+```
+If `protected` is missing in the option list, your built `qemu-cca` ref does not provide it (or you are executing a different binary).
+
+Fix:
+```bash
+# Clean qemu-cca download/build cache only
+rm -rf buildroot/dl/qemu-cca out-br/build/qemu-cca-* out-br/per-package/qemu-cca
+
+# Rebuild buildroot artifacts
+cd build
+make -j32 buildroot
+```
+
+Also verify the package source/ref:
+- `buildroot-external-cca/package/qemu-cca/qemu.mk` (`QEMU_CCA_SITE`, `QEMU_CCA_VERSION`)
 
 ## Notes
 - `start_cca.sh` expects `../debos-fs/out/rootfs.img`.
