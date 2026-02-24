@@ -50,6 +50,7 @@ cat /sys/kernel/debug/cca_policies/payload1
 ## Use Case: `rg_rn_re` - Multi-stage Video Moderation
 
 ### Host
+Login password: `root`.
 Run:
 
 ```bash
@@ -116,6 +117,7 @@ cat /sys/kernel/debug/cca_policies/payload2
 ## Use Case: `rg_rf_ri` - Guard-Railed LLM Inference
 
 ### Host
+Login password: `root`.
 Run:
 
 ```bash
