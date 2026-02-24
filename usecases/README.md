@@ -104,12 +104,6 @@ cd /root/usecases/rg_rn_re && ./re_app.sh
 cd /root/usecases/rg_rn_re && ./rg_app.sh
 ```
 
-Before app phase, generate tiny input video once in RG realm:
-```bash
-cd /root/usecases/rg_rn_re && ./make_tiny.sh
-```
-This creates `/root/usecases/rg_rn_re/tiny.mp4` (target: `<= 262112` bytes).
-
 Current configured sizing for `rg_rn_re`:
 - Per-shmem size in policy: `0x40000` (256 KiB)
 - Single payload cap: `262112` bytes (256 KiB minus 32-byte header)
