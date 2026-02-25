@@ -68,7 +68,7 @@ See the detailed runbook:
 
 | Repo Path | Repo Name | Purpose |
 |---|---|---|
-| `cca_patches` | `c3infer` | (this repository) Manifest, glue scripts, and build integration. |
+| `c3infer` | `c3infer` | (this repository) Manifest, glue scripts, and build integration. |
 | `buildroot-external-cca/overlay` | `buildroot_overlay` | Realm/rootfs overlay content (`f_realm`) used in the RamFS image. |
 | `debos-fs` | `debos-fs` | Debos rootfs image build and disk overlay pipeline. |
 | `opencca-build` | `opencca-build` | Dockerized environment used to run debos disk builds. |
