@@ -4,14 +4,13 @@ TODO: Add C3Infer description here.
 
 ## Build and Install
 
+Install OP-TEE/QEMU prerequisites from Linaro [here](https://linaro.atlassian.net/wiki/spaces/QEMU/pages/29051027459/Building+an+RME+stack+for+QEMU#With-the-OP-TEE-build-environment).
+
 ```bash
 # Host dependencies
 sudo apt update
 sudo apt install -y git tmux screen docker.io gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 sudo systemctl enable --now docker
-
-# Follow OP-TEE/QEMU prerequisites:
-# https://linaro.atlassian.net/wiki/spaces/QEMU/pages/29051027459/Building+an+RME+stack+for+QEMU#With-the-OP-TEE-build-environment
 
 # Fresh workspace
 mkdir -p c3infer
@@ -56,3 +55,15 @@ make run-only-multiregion
 See the detailed runbook:
 
 - [usecases/README.md](usecases/README.md)
+
+## C3Infer Components (Org Repositories)
+
+| Repo Path | Repo Name | Purpose |
+|---|---|---|
+| `cca_patches` | `cca_patches` | (this repository) Manifest, glue scripts, and build integration. |
+| `buildroot-external-cca/overlay` | `buildroot_overlay` | Realm/rootfs overlay content (`f_realm`) used in the RamFS image. |
+| `debos-fs` | `debos-fs` | Debos rootfs image build and disk overlay pipeline. |
+| `opencca-build` | `opencca-build` | Dockerized environment used to run debos disk builds. |
+| `linux` | `host-linux` | Host kernel tree used by the stack. |
+| `linux-guest` | `guest-linux` | Guest/realm kernel tree used by the stack. |
+| `rmm` | `rmm-private` | Realm Management Monitor implementation. |
