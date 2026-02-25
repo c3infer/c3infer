@@ -47,6 +47,8 @@ make run-only-multiregion
 
 ## Example Use Case: `rnet_ra` - Network service Realm
 
+Login note: Host and `realmB` (`ra`) use password `root`.
+
 ```bash
 # Host
 /root/usecases/rnet_ra/start_realms.sh
