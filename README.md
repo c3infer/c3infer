@@ -21,7 +21,7 @@ cd c3infer
 repo init -u https://github.com/c3infer/c3infer.git -b master -m default_remote_disk.xml
 repo sync -j32 --no-clone-bundle
 # Run a second sync to resolve occasional copyfile/linkfile inconsistencies
-repo sync -j32 --no-clone-bundle
+repo sync
 ```
 
 ### Build
