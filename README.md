@@ -18,7 +18,7 @@ sudo systemctl enable --now docker
 mkdir -p c3infer
 cd c3infer
 
-repo init -u https://github.com/c3infer/cca_patches.git -b master -m default_remote_disk.xml
+repo init -u https://github.com/c3infer/c3infer.git -b master -m default_remote_disk.xml
 repo sync -j32 --no-clone-bundle
 ```
 
@@ -66,11 +66,11 @@ See the detailed runbook:
 
 | Repo Path | Repo Name | Purpose |
 |---|---|---|
-| `cca_patches` | `cca_patches` | (this repository) Manifest, glue scripts, and build integration. |
+| `cca_patches` | `c3infer` | (this repository) Manifest, glue scripts, and build integration. |
 | `buildroot-external-cca/overlay` | `buildroot_overlay` | Realm/rootfs overlay content (`f_realm`) used in the RamFS image. |
 | `debos-fs` | `debos-fs` | Debos rootfs image build and disk overlay pipeline. |
 | `opencca-build` | `opencca-build` | Dockerized environment used to run debos disk builds. |
-| `qemu` | `qemu-private` | CCA-enabled QEMU fork used by the stack. |
+| `qemu` | `qemu` | CCA-enabled QEMU fork used by the stack. |
 | `linux` | `host-linux` | Host kernel tree used by the stack. |
 | `linux-guest` | `guest-linux` | Guest/realm kernel tree used by the stack. |
-| `rmm` | `rmm-private` | Realm Management Monitor implementation. |
+| `rmm` | `rmm` | Realm Management Monitor implementation. |

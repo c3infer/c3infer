@@ -20,6 +20,6 @@ Follow the OP-TEE environment prerequisites from Linaro:
 mkdir -p c3infer
 cd c3infer
 
-repo init -u https://github.com/c3infer/cca_patches.git -b master -m default_remote_disk.xml
+repo init -u https://github.com/c3infer/c3infer.git -b master -m default_remote_disk.xml
 repo sync -j32 --no-clone-bundle
 ```

@@ -13,7 +13,7 @@ sudo DEBOS_MODE=container ./build_debos_disk_with_remote_gguf.sh
 # Build toolchains + firmware + kernels + buildroot/qemu artifacts
 make -j32 full-stack
 
-# Re-sync and rebuild (workaround if cca_patches update is missed)
+# Re-sync and rebuild (workaround if c3infer update is missed)
 cd ..
 repo sync -j32 --no-clone-bundle
 cd build
