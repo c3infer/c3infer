@@ -76,3 +76,31 @@ See the detailed runbook:
 | `linux` | `host-linux` | Host kernel tree used by the stack. |
 | `linux-guest` | `guest-linux` | Guest/realm kernel tree used by the stack. |
 | `rmm` | `rmm` | Realm Management Monitor implementation. |
+
+## Troubleshooting / Gotcha
+
+### QEMU Missing `ivshmem-plain.protected`
+
+If startup fails with:
+
+`Property 'ivshmem-plain.protected' not found`
+
+the wrong QEMU ref/binary is being used.
+
+Check active Buildroot QEMU from workspace root (`c3infer`):
+
+```bash
+./out-br/host/bin/qemu-system-aarch64 -device ivshmem-plain,help
+```
+
+If `protected` is missing, clean only qemu-cca caches and rebuild:
+
+```bash
+rm -rf buildroot/dl/qemu-cca out-br/build/qemu-cca-* out-br/per-package/qemu-cca
+cd build
+make -j32 buildroot
+```
+
+Verify package source/ref in:
+
+- `buildroot-external-cca/package/qemu-cca/qemu.mk` (`QEMU_CCA_SITE`, `QEMU_CCA_VERSION`)
