@@ -4,6 +4,8 @@ TODO: Add C3Infer description here.
 
 ## Build and Install
 
+### Install
+
 Install OP-TEE/QEMU prerequisites from Linaro [here](https://linaro.atlassian.net/wiki/spaces/QEMU/pages/29051027459/Building+an+RME+stack+for+QEMU#With-the-OP-TEE-build-environment).
 
 ```bash
@@ -18,7 +20,11 @@ cd c3infer
 
 repo init -u https://github.com/c3infer/cca_patches.git -b master -m default_remote_disk.xml
 repo sync -j32 --no-clone-bundle
+```
 
+### Build
+
+```bash
 # Build disk + full stack
 cd build
 sudo DEBOS_MODE=container ./build_debos_disk_with_remote_gguf.sh
@@ -64,6 +70,7 @@ See the detailed runbook:
 | `buildroot-external-cca/overlay` | `buildroot_overlay` | Realm/rootfs overlay content (`f_realm`) used in the RamFS image. |
 | `debos-fs` | `debos-fs` | Debos rootfs image build and disk overlay pipeline. |
 | `opencca-build` | `opencca-build` | Dockerized environment used to run debos disk builds. |
+| `qemu` | `qemu-private` | CCA-enabled QEMU fork used by the stack. |
 | `linux` | `host-linux` | Host kernel tree used by the stack. |
 | `linux-guest` | `guest-linux` | Guest/realm kernel tree used by the stack. |
 | `rmm` | `rmm-private` | Realm Management Monitor implementation. |
