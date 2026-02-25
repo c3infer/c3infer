@@ -39,7 +39,7 @@
   <project name="host-linux" path="linux" remote="host" revision="cca-host/v9" groups="local::patches" clone-depth="1"/>
   <project name="guest-linux" path="linux-guest" remote="guest" revision="cca-guest/v9" groups="local::patches" clone-depth="1"/>
   <project name="op-tee-4.2.0/build.git" path="build" remote="clo" revision="cca/v8"/>
-  <project name="qemu" path="qemu" remote="patches" revision="stable-9.2"/>
+  <project name="qemu/qemu.git" path="qemu" revision="stable-9.2"/>
   <project name="rmm" path="rmm" remote="rmm-priv" revision="cca/v8" groups="local::patches" clone-depth="1"/>
   <project name="tf-a/trusted-firmware-a" path="trusted-firmware-a" remote="clo" revision="cca/v9" clone-depth="1"/>
   <project name="tianocore/edk2.git" path="edk2" revision="b2db39cefe1318d13d30040d31a6954e6b7219ce" sync-s="true"/>
