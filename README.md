@@ -1,7 +1,5 @@
 ## C3Infer: A Framework for Compartmentalized, Confidential, and Certified AI Inference
 
-## C3Infer: A Framework for Compartmentalized, Confidential, and Certified AI Inference
-
 This organization hosts the code for **C3Infer**.
 
 The main outcome of the project is **Mica**, a confidential computing architecture for running **realistic AI inference pipelines** with **explicit, enforceable, and attestable** security policies across all stages.
