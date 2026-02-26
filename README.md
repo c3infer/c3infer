@@ -1,29 +1,9 @@
 ## C3Infer: A Framework for Compartmentalized, Confidential, and Certified AI Inference
 
-This organization hosts the code developed for **C3Infer**, a framework for running **AI inference pipelines** that are *compartmentalized*, *confidential*, and *policy-controlled end-to-end*.
-
-### What we built: Mica
-The main outcome of this project is **Mica**: a confidential computing architecture that replaces implicit “TEE-to-TEE trust” with **explicit, enforceable, and attestable communication policies**. Instead of assuming components won’t leak data, Mica requires that **every cross-component interaction** (memory sharing + control transitions) is **declared and constrained**.
-
-### Implementation (Arm CCA)
-We implement Mica on **Arm CCA** by extending the full virtualization stack:
-- **KVM**
-- **RMM** (policy enforcement point)
-- **QEMU VMM**
-
-This enables realistic **multi-stage inference pipelines** spanning multiple **Realms**, with tight control over how data and control signals move across compartments.
-
-### Policy model
-We develop a simple **DSL** that is **enforced inside the RMM** to explicitly define:
-- **Shared memory ranges** between Realms
-- **ACLs** governing which Realms can access which shared regions
-- Support for **confidential shared memory** between Realms
-- Allowed **non-memory transitions** involving the hypervisor, e.g.:
-  - **interrupt delivery**
-  - **RSIs (Realm Service Interface)** and other permitted Realm↔hypervisor interactions
-
-### Why it matters (AI-friendly)
-With Mica, we can run **realistic AI inference workloads** as compartmentalized pipelines where the **entire execution path**—from data ingress, to preprocessing, to model execution, to postprocessing—operates under **explicit security policy control**, rather than relying on fragile trust assumptions between pipeline stages.
+This organization hosts the code for **C3Infer**. 
+The main outcome is **Mica**, a confidential computing architecture for running **realistic AI inference pipelines** with **explicit, enforceable, and attestable** security policies across all stages. We implement Mica on **Arm CCA** by extending **KVM**, **RMM**, and **QEMU VMM**. 
+A lightweight **DSL**, enforced inside the **RMM**, specifies (i) **shared memory ranges** and **ACLs** for Realm (cVM) to Realm communication (including **confidential shared memory between Realms**) and (ii) allowed **non-memory transitions** with the hypervisor (e.g., **interrupts**, **RSIs**).
+This removes implicit trust between pipeline components by constraining all data and control flows to authorized paths.
 
 ## Build and Install
 
