@@ -1,10 +1,18 @@
 ## C3Infer: A Framework for Compartmentalized, Confidential, and Certified AI Inference
 
-This organization hosts the code for **C3Infer**. 
-The main outcome is **Mica**, a confidential computing architecture for running **realistic AI inference pipelines** with **explicit, enforceable, and attestable** security policies across all stages. We implement Mica on **Arm CCA** by extending **KVM**, **RMM**, and **QEMU VMM**. 
-A lightweight **DSL**, enforced inside the **RMM**, specifies (i) **shared memory ranges** and **ACLs** for Realm (cVM) to Realm communication (including **confidential shared memory between Realms**) and (ii) allowed **non-memory transitions** with the hypervisor (e.g., **interrupts**, **RSIs**).
-This removes implicit trust between pipeline components by constraining all data and control flows to authorized paths.
+## C3Infer: A Framework for Compartmentalized, Confidential, and Certified AI Inference
 
+This organization hosts the code for **C3Infer**.
+
+The main outcome of the project is **Mica**, a confidential computing architecture for running **realistic AI inference pipelines** with **explicit, enforceable, and attestable** security policies across all stages.
+
+We implement Mica on **Qemu support for Arm CCA** by extending **KVM**, **RMM**, and **QEMU VMM**, enabling compartmentalized pipelines spanning multiple isolated Realms.
+
+A lightweight **DSL**, enforced inside the **RMM**, specifies:
+- **shared memory ranges** and **ACLs** for Realm↔Realm communication, including **confidential shared memory between Realms**
+- allowed **non-memory transitions** with the hypervisor, such as **interrupts** and **RSIs**
+
+This approach removes implicit trust between pipeline components by constraining all data and control flows to explicitly authorized and attestable paths.
 ## Build and Install
 
 ### Install
