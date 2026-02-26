@@ -1,6 +1,6 @@
 # C3Infer
 
-TODO: Add C3Infer description here.
+This repository presents the 
 
 ## Build and Install
 
