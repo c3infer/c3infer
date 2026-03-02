@@ -86,7 +86,7 @@ See the detailed runbook [here](usecases/README.md).
 | `linux-guest` | `guest-linux` | Guest/realm kernel tree used by the stack. |
 | `rmm` | `rmm` | Realm Management Monitor implementation. |
 
-## Troubleshooting / Gotcha
+## Troubleshooting
 
 ### QEMU Missing `ivshmem-plain.protected`
 
@@ -113,3 +113,7 @@ make -j32 buildroot
 Verify package source/ref in:
 
 - `buildroot-external-cca/package/qemu-cca/qemu.mk` (`QEMU_CCA_SITE`, `QEMU_CCA_VERSION`)
+
+## Get in Touch
+
+Questions, bug reports, and collaboration ideas are all welcome. Feel free to reach out at `alsadi.amir@gmail.com`.
