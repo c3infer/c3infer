@@ -116,4 +116,4 @@ Verify package source/ref in:
 
 ## Get in Touch
 
-Questions, bug reports, and collaboration ideas are all welcome. Feel free to reach out at `alsadi.amir@gmail.com`.
+Questions, bug reports, and collaboration ideas are all welcome. Feel free to reach out at [alsadi.amir@gmail.com](mailto:alsadi.amir@gmail.com).
