@@ -1,5 +1,7 @@
 ## C3Infer: A Framework for Compartmentalized, Confidential, and Certified AI Inference
 
+AI systems are increasingly organized as pipelines, where each stage may run as confidential computation but the steps in between still depend heavily on implicit trust. In the broader [AISI](https://www.aisi.gov.uk) context of improving AI safety, security, and resilience in real-world deployment, this project focuses on giving stronger control and attestation over how data and execution move across those boundaries.
+
 This organization hosts the code for **C3Infer**.
 
 The main outcome of the project is **Mica**, a confidential computing architecture for running **realistic AI inference pipelines** with **explicit, enforceable, and attestable** security policies across all stages.
