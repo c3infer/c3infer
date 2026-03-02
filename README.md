@@ -71,9 +71,7 @@ Login note: Host and `realmB` (`ra`) use password `root`.
 
 ## More Use Cases
 
-See the detailed runbook:
-
-- [usecases/README.md](usecases/README.md)
+See the detailed runbook [here](usecases/README.md).
 
 ## C3Infer Components (Org Repositories)
 
