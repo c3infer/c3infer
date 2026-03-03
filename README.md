@@ -7,7 +7,7 @@ The main outcome of the project is **Mica**, a confidential computing architectu
 We implement Mica on **Qemu support for Arm CCA** by extending **KVM**, **RMM**, and **QEMU VMM**, enabling compartmentalized pipelines spanning multiple isolated Realms.
 
 A lightweight **DSL**, enforced inside the **RMM**, specifies:
-- **shared memory ranges** and **ACLs** for Realm↔Realm communication, including **confidential shared memory between Realms**
+- **shared memory ranges** and **ACLs** for Realm to Realm communication, including **confidential shared memory between Realms**
 - allowed **non-memory transitions** with the hypervisor, such as **interrupts** and **RSIs**
 
 This approach removes implicit trust between pipeline components by constraining all data and control flows to explicitly authorized and attestable paths.
