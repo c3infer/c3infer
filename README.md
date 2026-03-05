@@ -2,7 +2,7 @@
 
 AI systems are increasingly organized as pipelines, where each stage may run as confidential computation but the steps in between still depend heavily on implicit trust. As part of the broader [AISI](https://www.aisi.gov.uk) mission to improve AI safety, security, and resilience in real-world deployment, **C3Infer** focuses on providing stronger control and attestation over how data and execution move across those boundaries. This organization hosts the code for **C3Infer**, an AISI project.
 
-The main outcome of the project is **Mica**, a confidential computing architecture for running **realistic AI inference pipelines** with **explicit, enforceable, and attestable** security policies across all stages.
+The main outcome of the project is **Mica** ([cite](#citation)), a confidential computing architecture for running **realistic AI inference pipelines** with **explicit, enforceable, and attestable** security policies across all stages.
 
 We implement Mica on **Qemu support for Arm CCA** by extending **KVM**, **RMM**, and **QEMU VMM**, enabling compartmentalized pipelines spanning multiple isolated Realms.
 
@@ -113,6 +113,22 @@ make -j32 buildroot
 Verify package source/ref in:
 
 - `buildroot-external-cca/package/qemu-cca/qemu.mk` (`QEMU_CCA_SITE`, `QEMU_CCA_VERSION`)
+
+## Citation
+
+If you use Mica/C3Infer in research, please cite:
+
+```bibtex
+@misc{mica,
+      title={Sharing is caring: Attestable and Trusted Workflows out of Distrustful Components}, 
+      author={Amir Al Sadi and Sina Abdollahi and Adrien Ghosn and Hamed Haddadi and Marios Kogias},
+      year={2026},
+      eprint={2603.03403},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2603.03403}, 
+}
+```
 
 ## Get in Touch
 
