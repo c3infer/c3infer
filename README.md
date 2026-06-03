@@ -20,7 +20,17 @@ Install OP-TEE/QEMU prerequisites from Linaro [here](https://linaro.atlassian.ne
 ```bash
 # Host dependencies
 sudo apt update
-sudo apt install -y git tmux screen docker.io gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+sudo apt install -y \
+  repo git make gcc g++ \
+  python3 python3-venv python3-pyelftools \
+  acpica-tools \
+  libssl-dev libglib2.0-dev libpixman-1-dev uuid-dev \
+  zlib1g-dev libfdt-dev \
+  device-tree-compiler \
+  flex bison \
+  cmake ninja-build \
+  curl rsync pkg-config \
+  tmux screen docker.io gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
 sudo systemctl enable --now docker
 
 # Fresh workspace
