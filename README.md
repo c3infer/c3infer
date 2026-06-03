@@ -49,7 +49,7 @@ repo sync
 # Build disk + full stack
 cd build
 sudo DEBOS_MODE=container ./build_debos_disk_with_remote_gguf.sh
-make -j32 full-stack
+make DEBUG=0 -j32 full-stack
 ```
 
 ## Run
