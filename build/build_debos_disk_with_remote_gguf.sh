@@ -6,6 +6,8 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 DEBOS_DIR="${ROOT_DIR}/debos-fs"
 OPENCCA_DOCKER_DIR="${OPENCCA_DOCKER_DIR:-${ROOT_DIR}/opencca-build/docker}"
 DEBOS_MODE="${DEBOS_MODE:-auto}" # auto | local | container
+IMG_SIZE="${IMG_SIZE:-5000MB}"
+DEBOS_MEMORY="${DEBOS_MEMORY:-8Gb}"
 
 MODEL_URL="${MODEL_URL:-https://huggingface.co/Mungert/gpt2-GGUF/resolve/main/gpt2-q8_0.gguf}"
 EXPECTED_SHA256="${MODEL_SHA256:-6029c84fa164349d9babfef32ed1c19ee1a912ea5c22bf37eeb7cbbf42cb98b8}"
@@ -73,7 +75,8 @@ if [[ "${FORCE_REBUILD_DISK:-0}" == "1" || ! -f "${OUT_IMG}" ]]; then
         --py-enable 1 \
         --reqs-file "${DEBOS_DIR}/requirements.txt" \
         --format ext4 \
-        --imgsize 2300MB \
+        --imgsize "${IMG_SIZE}" \
+        --memory "${DEBOS_MEMORY}" \
         --console hvc0 \
         --overlay-dest / \
         --custom-script ./script.sh
@@ -89,7 +92,7 @@ if [[ "${FORCE_REBUILD_DISK:-0}" == "1" || ! -f "${OUT_IMG}" ]]; then
 
     make -C "${OPENCCA_DOCKER_DIR}" pull
     make -C "${OPENCCA_DOCKER_DIR}" start
-    make -C "${OPENCCA_DOCKER_DIR}" run CMD="sudo bash -lc 'cd /opencca/debos-fs && ./buildfs.sh'"
+    make -C "${OPENCCA_DOCKER_DIR}" run CMD="sudo bash -lc 'cd /opencca/debos-fs && IMG_SIZE=${IMG_SIZE} DEBOS_MEMORY=${DEBOS_MEMORY} ./buildfs.sh'"
   }
 
   case "${DEBOS_MODE}" in
