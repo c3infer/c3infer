@@ -30,7 +30,7 @@ sudo apt install -y \
   flex bison \
   cmake ninja-build \
   curl rsync pkg-config \
-  tmux screen docker.io gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+  tmux screen docker.io gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu socat
 sudo systemctl enable --now docker
 
 # Fresh workspace
