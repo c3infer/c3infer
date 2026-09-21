@@ -46,4 +46,3 @@ BR2_GLOBAL_PATCH_DIR="$(BR2_EXTERNAL_LINARO_CCA_PATH)/patches/"
 
 BR2_ROOTFS_OVERLAY="$(BR2_EXTERNAL_LINARO_CCA_PATH)/overlay/f_realm"
 
-CCA_WORKLOAD_ATTESTATION_SITE = "https://github.com/c3infer/cca-workload-attestation-poc.git"
