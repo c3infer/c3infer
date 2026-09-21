@@ -15,7 +15,7 @@ This approach removes implicit trust between pipeline components by constraining
 
 ### Install
 
-Install OP-TEE/QEMU prerequisites from Linaro [here](https://linaro.atlassian.net/wiki/spaces/QEMU/pages/29051027459/Building+an+RME+stack+for+QEMU#With-the-OP-TEE-build-environment).
+The following host dependencies were tested on Ubuntu 22.04.
 
 ```bash
 # Host dependencies
