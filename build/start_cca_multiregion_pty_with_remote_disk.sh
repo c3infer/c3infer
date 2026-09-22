@@ -13,7 +13,7 @@ if [[ ! -f "${SRC_IMG}" ]]; then
 fi
 
 mkdir -p "${IMAGES_DIR}"
-for name in rootfs1.img rootfs2.img rootfs3.img; do
+for name in rootfs1.img rootfs2.img rootfs3.img rootfs4.img; do
   dst="${IMAGES_DIR}/${name}"
   if [[ -f "${dst}" ]] && cmp -s "${SRC_IMG}" "${dst}"; then
     echo "${name} unchanged; keeping ${dst}"

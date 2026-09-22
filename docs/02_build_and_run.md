@@ -36,4 +36,4 @@ make run-only-multiregion
 
 Use the per-usecase guide:
 
-- [usecases/README.md](../usecases/README.md)
+- [04_usecases.md](04_usecases.md)
