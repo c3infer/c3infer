@@ -4,6 +4,10 @@ Run the usecases in the functional prototype.
 
 ## Video moderation
 
+Realm mapping: Realm A = RNET, Realm B = ENC, and Realm C = NUD.
+
+Run every command in this section in the order shown: start the realms from the host first, then configure each realm and start its application, and finally start RNET's application.
+
 ```text
 RNET(A) -> ENC(B) -> NUD(C) -> RNET(A)
 ```
@@ -33,6 +37,10 @@ VIDEO_DST=10.0.2.2 \
 
 ## Agent with network access
 
+Realm mapping: Realm A = RNET and Realm B = Agent.
+
+Run every command in this section in the order shown: start the realms from the host first, then configure RNET, configure Agent, and finally start the Agent application.
+
 ```text
 Agent(B) -> RNET(A) -> UDP
          <- acknowledgement
@@ -60,6 +68,10 @@ AGENT_PAYLOAD="hello from agent" \
 <!-- No external UDP receiver is required for completion. Replace `10.0.2.2` with another reachable destination when needed. -->
 
 ## Agent with network access and local LLM
+
+Realm mapping: Realm A = RNET, Realm B = Agent, and Realm C = LLM.
+
+Run every command in this section in the order shown: start the realms from the host first, then configure RNET, configure Agent, configure LLM, and finally start the Agent application.
 
 ```text
 Agent(B) -> LLM(C) -> Agent(B) -> RNET(A) -> UDP
@@ -89,6 +101,10 @@ PROMPT_FILE=/root/usecases/agent_llm_rnet/agent_prompt.txt \
 ```
 
 ## Agent with network access and local LLM with guardrails
+
+Realm mapping: Realm A = RNET, Realm B = Agent, Realm C = Guardrails, and Realm D = LLM.
+
+Run every command in this section in the order shown: start the realms from the host first, then configure RNET, configure Agent, configure Guardrails, configure LLM, and finally start the Agent application.
 
 ```text
 Agent(B) -> Guardrails(C) -> LLM(D) -> Guardrails(C)
