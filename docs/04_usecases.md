@@ -1,23 +1,6 @@
 # Usecases
 
-All usecases use the same DebOS disk image. Build it from the workspace root:
-
-```bash
-cd /home/amir/c3infer
-DEBOS_MODE=container FORCE_REBUILD_DISK=1 \
-  ./c3infer/build/build_debos_disk_with_remote_gguf.sh
-```
-
-Copy the image into the Buildroot realm slots used by the launcher:
-
-```bash
-cp debos-fs/out/rootfs.img out-br/images/rootfs1.img
-cp debos-fs/out/rootfs.img out-br/images/rootfs2.img
-cp debos-fs/out/rootfs.img out-br/images/rootfs3.img
-cp debos-fs/out/rootfs.img out-br/images/rootfs4.img
-```
-
-Refresh Buildroot after changing the realm launchers, then start the host realm and run the selected launcher from its host shell.
+Start from a built stack. Refresh Buildroot after changing the realm launchers, then start the host realm and run the selected launcher from its host shell.
 
 ## Video
 
@@ -47,6 +30,34 @@ VIDEO_INPUT=/root/usecases/video/tiny.mp4 \
 VIDEO_DST=10.0.2.2 \
 /root/usecases/video/rnet_app.sh
 ```
+
+## Agent and RNET
+
+```text
+Agent(B) -> RNET(A) -> UDP
+         <- acknowledgement
+```
+
+The Agent creates a payload and sends it to RNET through the bidirectional `shm1` channel. RNET forwards the payload over UDP and returns a transmission acknowledgement to Agent through the same channel.
+
+```bash
+# Host realm
+/root/usecases/agent_rnet/start_realms.sh
+
+# RNET
+/root/usecases/agent_rnet/rnet_setup.sh
+RNET_DST=10.0.2.2 RNET_PORT=5000 \
+/root/usecases/agent_rnet/rnet_app.sh
+
+# Agent
+/root/usecases/agent_rnet/agent_setup.sh
+
+# Agent, after RNET is waiting
+AGENT_PAYLOAD="hello from agent" \
+/root/usecases/agent_rnet/agent_app.sh
+```
+
+No external UDP receiver is required for completion. Replace `10.0.2.2` with another reachable destination when needed.
 
 ## Agent, LLM, and RNET
 

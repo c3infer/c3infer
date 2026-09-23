@@ -64,24 +64,9 @@ From workspace `build/`:
 make run-only-multiregion
 ```
 
-## Example Use Case: `rnet_ra` - Network service Realm
+## Use Cases
 
-Login note: Host and `realmB` (`ra`) use password `root`.
-
-```bash
-# Host
-/root/usecases/rnet_ra/start_realms.sh
-
-# realmA (rnet)
-/root/usecases/rnet_ra/rnet.sh
-
-# realmB (ra)
-/root/usecases/rnet_ra/ra.sh
-```
-
-## More Use Cases
-
-See the detailed runbook in [docs/04_usecases.md](docs/04_usecases.md).
+See the usecase runbook in [docs/04_usecases.md](docs/04_usecases.md).
 
 ## C3Infer Components (Org Repositories)
 
