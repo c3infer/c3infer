@@ -1,8 +1,8 @@
 # Usecases
 
-Start from a built stack. Refresh Buildroot after changing the realm launchers, then start the host realm and run the selected launcher from its host shell.
+Run the usecases in the functional prototype.
 
-## Video
+## Video moderation
 
 ```text
 RNET(A) -> ENC(B) -> NUD(C) -> RNET(A)
@@ -31,7 +31,7 @@ VIDEO_DST=10.0.2.2 \
 /root/usecases/video/rnet_app.sh
 ```
 
-## Agent and RNET
+## Agent with network access
 
 ```text
 Agent(B) -> RNET(A) -> UDP
@@ -59,7 +59,7 @@ AGENT_PAYLOAD="hello from agent" \
 
 No external UDP receiver is required for completion. Replace `10.0.2.2` with another reachable destination when needed.
 
-## Agent, LLM, and RNET
+## Agent with network access and local LLM
 
 ```text
 Agent(B) -> LLM(C) -> Agent(B) -> RNET(A) -> UDP
@@ -88,7 +88,7 @@ PROMPT_FILE=/root/usecases/agent_llm_rnet/agent_prompt.txt \
 /root/usecases/agent_llm_rnet/agent_app.sh
 ```
 
-## Agent, Guardrails, LLM, and RNET
+## Agent with network access and local LLM with guardrails
 
 ```text
 Agent(B) -> Guardrails(C) -> LLM(D) -> Guardrails(C)
