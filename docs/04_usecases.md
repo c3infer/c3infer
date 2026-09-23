@@ -57,7 +57,7 @@ AGENT_PAYLOAD="hello from agent" \
 /root/usecases/agent_rnet/agent_app.sh
 ```
 
-No external UDP receiver is required for completion. Replace `10.0.2.2` with another reachable destination when needed.
+<!-- No external UDP receiver is required for completion. Replace `10.0.2.2` with another reachable destination when needed. -->
 
 ## Agent with network access and local LLM
 
@@ -122,9 +122,10 @@ PROMPT_FILE=/root/usecases/agent_guardrails_llm_rnet/agent_prompt.txt \
 /root/usecases/agent_guardrails_llm_rnet/agent_app.sh
 ```
 
-For QEMU user-mode networking, `10.0.2.2` is normally the host-side destination. Otherwise use the reachable IP of the external UDP destination. No external UDP receiver is required for completion; RNET transmits and acknowledges locally through the shared channel.
+<!-- For QEMU user-mode networking, `10.0.2.2` is normally the host-side destination. Otherwise use the reachable IP of the external UDP destination.  -->
+<!-- No external UDP receiver is required for completion; RNET transmits and acknowledges locally through the shared channel. -->
 
-## Shared-memory mappings
+<!-- ## Shared-memory mappings
 
 The Agent-LLM-RNET usecase uses:
 
@@ -141,4 +142,4 @@ shm2: Guardrails 0x18004000000 <-> LLM       0x18000000000
 shm3: Agent      0x18004000000 <-> RNET      0x18000000000
 ```
 
-All mappings in these bidirectional channels are `RW`. Setup scripts perform prefaulting and upload the corresponding RSI policy before the application scripts are started.
+All mappings in these bidirectional channels are `RW`. Setup scripts perform prefaulting and upload the corresponding RSI policy before the application scripts are started. -->
