@@ -68,6 +68,10 @@ make run-only-multiregion
 
 See the usecase runbook in [docs/04_usecases.md](docs/04_usecases.md).
 
+## Microbenchmark
+
+Build the board and run the [microbenchmark](https://github.com/c3infer/board-porting/blob/main/README.md).
+
 ## C3Infer Components (Org Repositories)
 
 | Repo Path | Repo Name | Purpose |
